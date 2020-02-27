@@ -1,0 +1,233 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="crawler">
+
+  <!--
+        To generate the correct .URDF from this XACRO file see https://answers.ros.org/question/10401/how-to-convert-xacro-file-to-urdf-file/
+  -->
+
+  <!--CONSTANTS-->
+  <xacro:property name="PI" value="3.14159" />
+
+  <xacro:property name="BODY_LENGTH" value="1"/>
+  <xacro:property name="BODY_MASS" value="1"/>
+
+  <xacro:property name="SPINE_SEGMENT_LENGTH" value="${BODY_LENGTH/5}" />
+  <xacro:property name="SPINE_BENDING_LIMIT" value="${PI/4}" />
+
+  <xacro:property name="BODY_SPHERE_MASS" value="${BODY_MASS/5}" />
+  <xacro:property name="BODY_SPHERE_RADIUS" value="${BODY_LENGTH/10}" />
+  <xacro:property name="BODY_SPHERE_INERTIA" value="${2*BODY_SPHERE_MASS*BODY_SPHERE_RADIUS*BODY_SPHERE_RADIUS/5}" />
+
+  <xacro:property name="GIRDLE_WIDTH" value="${BODY_LENGTH/8}" />
+  <xacro:property name="GIRDLE_LENGTH" value="${BODY_LENGTH/8}" />
+
+  <xacro:property name="LEG_LENGTH" value="${BODY_LENGTH/10}" />
+  <xacro:property name="LEG_TIP_MASS" value="${BODY_MASS/20}" />
+  <xacro:property name="LEG_TIP_RADIUS" value="${BODY_LENGTH/20}" />
+  <xacro:property name="LEG_TIP_INERTIA" value="${2*LEG_TIP_MASS*LEG_TIP_RADIUS*LEG_TIP_RADIUS/5}" />
+
+  <xacro:property name="GIRDLE_FLEXION_LIMIT" value="${PI/2}" />
+  <xacro:property name="GIRDLE_EXTENSION_LIMIT" value="${PI/6}" />
+
+  <xacro:property name="GIRDLE_ABDUCTION_LIMIT" value="${PI/2}" />
+  <xacro:property name="GIRDLE_ADDUCTION_LIMIT" value="${PI/2}" />
+
+  <xacro:property name="JOINT_DAMPING" value="0.01" />
+  <xacro:property name="JOINT_FRICTION" value="0.01" />
+
+  <xacro:property name="VISUAL_BOX_RATIO" value="0.2" />
+
+
+
+<!--########### COLORS used for the links ###########-->
+<!--colors are currently implemented as macro because just defining them, as shown in the ROS tutorial, seems not to work-->
+  <!--<xacro:macro name="girdle_material">
+    <material name="girdle_material">
+      <color rgba="0.878 0.471 0.333 0.1"/>
+    </material>
+  </xacro:macro>-->
+  <xacro:macro name="girdle_material">
+    <material name="red">
+      <color rgba="1 0 0 0.5"/>
+    </material>
+  </xacro:macro>
+
+  <xacro:macro name="body_material">
+    <material name="body_material">
+      <color rgba="0.176 0.188 0.278 1.0"/>
+    </material>
+  </xacro:macro>
+  
+  <xacro:macro name="leg_material">
+    <material name="leg_material">
+      <color rgba="0.106 0.6 0.545 1.0"/>
+    </material>
+  </xacro:macro>
+
+  <xacro:macro name="visual_box_material">
+    <material name="visual_box_material">
+      <color rgba="0.627 0.620 0.733 1.0"/>
+    </material>
+  </xacro:macro>
+
+
+<!--########### MACRO for links and joints ###########-->
+ <xacro:macro name="spine_link_macro" params="N">
+  <link name="spine_link_${N}">
+    <inertial>
+     <origin xyz="${-SPINE_SEGMENT_LENGTH} 0 0" rpy="0 0 0"/>
+      <mass value="${BODY_SPHERE_MASS}"/>
+      <inertia ixx="${BODY_SPHERE_INERTIA}"  ixy="0"  ixz="0" iyy="${BODY_SPHERE_INERTIA}" iyz="0" izz="${BODY_SPHERE_INERTIA}" />
+    </inertial>
+    <visual>
+      <origin xyz="${-SPINE_SEGMENT_LENGTH} 0 0" rpy="0 0 0"/>
+      <geometry>
+        <sphere radius="${BODY_SPHERE_RADIUS}" />
+      </geometry>
+      <xacro:body_material/>
+    </visual>
+    <visual>
+      <origin xyz="${-SPINE_SEGMENT_LENGTH/2} 0 0" rpy="0 0 0"/>
+      <geometry>
+        <box size="${SPINE_SEGMENT_LENGTH} ${VISUAL_BOX_RATIO*SPINE_SEGMENT_LENGTH} ${VISUAL_BOX_RATIO*GIRDLE_WIDTH}"/>
+      </geometry>
+      <xacro:visual_box_material/>
+    </visual>
+    <collision>
+      <origin xyz="${-SPINE_SEGMENT_LENGTH} 0 0" rpy="0 0 0"/>
+      <geometry>
+        <sphere radius="${BODY_SPHERE_RADIUS}" />
+      </geometry>
+    </collision>
+  </link>
+</xacro:macro>
+
+<xacro:macro name="spine_joint_macro" params="N">
+  <joint name="spine_joint_${N-1}_${N}" type="revolute">
+    <origin xyz="${-SPINE_SEGMENT_LENGTH} 0 0" rpy="0 0 0"/>
+    <axis xyz="0 0 1"/>
+    <parent link="spine_link_${N-1}"/>
+    <child link="spine_link_${N}"/>
+    <dynamics damping="${JOINT_DAMPING}" friction="${JOINT_FRICTION}"/>
+    <limit effort="30" velocity="1.0" lower="-${SPINE_BENDING_LIMIT}" upper="${SPINE_BENDING_LIMIT}" />
+  </joint>
+</xacro:macro>
+
+<xacro:macro name="leg_macro" params="prefix reflect">
+  <link name="${prefix}_girdle_connection_1">
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="0.01"/>
+      <inertia ixx="0.001"  ixy="0"  ixz="0" iyy="0.001" iyz="0" izz="0.001" />
+    </inertial>
+  </link>
+  <joint name="${prefix}_girdle_flection_joint" type="revolute">
+    <origin xyz="0 ${-reflect*GIRDLE_WIDTH} 0" rpy="0 ${PI/2} ${-reflect*PI/2}"/>
+    <axis xyz="0 0 1"/>
+    <parent link="girdle"/>
+    <child link="${prefix}_girdle_connection_1"/>
+    <dynamics damping="${JOINT_DAMPING}" friction="${JOINT_FRICTION}"/>
+    <limit effort="30" velocity="1.0" lower="-${GIRDLE_EXTENSION_LIMIT}" upper="${GIRDLE_FLEXION_LIMIT}" />
+  </joint>
+  <link name="${prefix}_leg">
+    <inertial>
+     <origin xyz="${LEG_LENGTH} 0 0" rpy="0 0 0"/>
+      <mass value="${LEG_TIP_MASS}"/>
+      <inertia ixx="${LEG_TIP_INERTIA}"  ixy="0"  ixz="0" iyy="${LEG_TIP_INERTIA}" iyz="0" izz="${LEG_TIP_INERTIA}" />
+    </inertial>
+    <visual>
+      <origin xyz="${LEG_LENGTH} 0 0" rpy="0 0 0"/>
+      <geometry>
+        <sphere radius="${LEG_TIP_RADIUS}" />
+      </geometry>
+      <xacro:leg_material/>
+    </visual>
+    <visual>
+      <origin xyz="${LEG_LENGTH/2} 0 0" rpy="0 0 0"/>
+      <geometry>
+        <box size="${LEG_LENGTH} ${VISUAL_BOX_RATIO*LEG_LENGTH} ${VISUAL_BOX_RATIO*LEG_LENGTH}" />
+      </geometry>
+      <xacro:visual_box_material/>
+    </visual>
+    <collision>
+      <origin xyz="${LEG_LENGTH} 0 0" rpy="0 0 0"/>
+      <geometry>
+        <sphere radius="${LEG_TIP_RADIUS}" />
+      </geometry>
+    </collision>
+  </link>
+  <joint name="${prefix}_girdle_abduction_joint" type="revolute">
+    <origin xyz="0 0 0" rpy="${reflect*PI/2} 0 0"/>
+    <axis xyz="0 0 1"/>
+    <parent link="${prefix}_girdle_connection_1"/>
+    <child link="${prefix}_leg"/>
+    <dynamics damping="${JOINT_DAMPING}" friction="${JOINT_FRICTION}"/>
+    <limit effort="30" velocity="1.0" lower="-${GIRDLE_ADDUCTION_LIMIT}" upper="${GIRDLE_ABDUCTION_LIMIT}" />
+  </joint>
+</xacro:macro>
+
+
+
+<!-- ########### MODEL LINKS AND JOINTS ########### -->
+  <link name="girdle">
+   <inertial>
+     <origin xyz="0 0 0" rpy="0 0 0"/>
+     <mass value="${BODY_SPHERE_MASS}"/>
+     <inertia ixx="${BODY_SPHERE_INERTIA}"  ixy="0"  ixz="0" iyy="${BODY_SPHERE_INERTIA}" iyz="0" izz="${BODY_SPHERE_INERTIA}" />
+   </inertial>
+   <visual>
+     <origin xyz="0 0 0" rpy="0 0 0"/>
+     <geometry>
+       <sphere radius="${BODY_SPHERE_RADIUS}" />
+     </geometry>
+     <xacro:girdle_material/>
+   </visual>
+   <visual>
+     <origin xyz="0 0 0" rpy="0 0 0"/>
+     <geometry>
+       <box size="${VISUAL_BOX_RATIO*2*GIRDLE_WIDTH} ${2*GIRDLE_WIDTH} ${VISUAL_BOX_RATIO*2*GIRDLE_WIDTH}"/>
+     </geometry>
+     <xacro:visual_box_material/>
+   </visual>
+   <visual>
+     <origin xyz="0 0 0" rpy="0 0 0"/>
+     <geometry>
+       <box size="${2*GIRDLE_LENGTH} ${VISUAL_BOX_RATIO*2*GIRDLE_LENGTH} ${VISUAL_BOX_RATIO*2*GIRDLE_WIDTH}"/>
+     </geometry>
+     <xacro:visual_box_material/>
+   </visual>
+   <collision>
+     <origin xyz="0 0 0" rpy="0 0 0"/>
+     <geometry>
+       <sphere radius="${BODY_SPHERE_RADIUS}" />
+     </geometry>
+   </collision>
+ </link>
+
+  <xacro:spine_link_macro N="1"/>
+
+  <joint name="girdle_spine_joint" type="revolute">
+    <origin xyz="-${GIRDLE_LENGTH} 0 0" rpy="0 0 0"/>
+    <axis xyz="0 0 1"/>
+    <parent link="girdle"/>
+    <child link="spine_link_1"/>
+    <dynamics damping="${JOINT_DAMPING}" friction="${JOINT_FRICTION}"/>
+    <limit effort="30" velocity="1.0" lower="-${SPINE_BENDING_LIMIT}" upper="${SPINE_BENDING_LIMIT}" />
+  </joint>
+
+  <xacro:spine_link_macro N="2"/>
+  <xacro:spine_joint_macro N="2"/>
+
+  <xacro:spine_link_macro N="3"/>
+  <xacro:spine_joint_macro N="3"/>
+
+  <xacro:spine_link_macro N="4"/>
+  <xacro:spine_joint_macro N="4"/>
+
+  <xacro:spine_link_macro N="5"/>
+  <xacro:spine_joint_macro N="5"/>
+
+  <xacro:leg_macro prefix="right" reflect="1"/>
+  <xacro:leg_macro prefix="left" reflect="-1"/>
+
+</robot>
