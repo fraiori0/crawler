@@ -12,14 +12,14 @@
   <xacro:property name="BODY_MASS" value="1"/>
 
   <!-- NOTE: The numbers of spine segments, for now, must be matched manually to the number of macro called to add the spine segments-->
-  <xacro:property name="SPINE_SEGMENTS_NUMBER" value="7" />
+  <xacro:property name="SPINE_SEGMENTS_NUMBER" value="5" />
 
   <xacro:property name="SPINE_SEGMENT_LENGTH" value="${BODY_LENGTH/SPINE_SEGMENTS_NUMBER}" />
   <xacro:property name="SPINE_DORSAL_BENDING_LIMIT" value="${PI/8}" />
   <xacro:property name="SPINE_LATERAL_BENDING_LIMIT" value="${PI/4}" />
 
   <xacro:property name="BODY_SPHERE_MASS" value="${BODY_MASS/(SPINE_SEGMENTS_NUMBER+3)}" /><!-- +3 for the head and girdle masses-->
-  <xacro:property name="BODY_SPHERE_RADIUS" value="${SPINE_SEGMENT_LENGTH/2}" />
+  <xacro:property name="BODY_SPHERE_RADIUS" value="${BODY_LENGTH/10}" />
   <xacro:property name="BODY_SPHERE_INERTIA" value="${2*BODY_SPHERE_MASS*BODY_SPHERE_RADIUS*BODY_SPHERE_RADIUS/5}" />
 
   <xacro:property name="GIRDLE_WIDTH" value="${BODY_LENGTH/8}" />
@@ -27,7 +27,7 @@
 
   <xacro:property name="LEG_LENGTH" value="${BODY_LENGTH/10}" />
   <xacro:property name="LEG_TIP_MASS" value="${BODY_MASS/20}" />
-  <xacro:property name="LEG_TIP_RADIUS" value="${SPINE_SEGMENT_LENGTH/4}" />
+  <xacro:property name="LEG_TIP_RADIUS" value="${BODY_LENGTH/20}" />
   <xacro:property name="LEG_TIP_INERTIA" value="${2*LEG_TIP_MASS*LEG_TIP_RADIUS*LEG_TIP_RADIUS/5}" />
 
   <xacro:property name="GIRDLE_FLEXION_LIMIT" value="${PI/2}" />
@@ -130,6 +130,48 @@
     </joint>
   </xacro:macro>
 
+  <!--
+  <xacro:macro name="spine_link_macro" params="N">
+    <link name="spine_link_${N}">
+      <inertial>
+      <origin xyz="${-SPINE_SEGMENT_LENGTH} 0 0" rpy="0 0 0"/>
+        <mass value="${BODY_SPHERE_MASS}"/>
+        <inertia ixx="${BODY_SPHERE_INERTIA}"  ixy="0"  ixz="0" iyy="${BODY_SPHERE_INERTIA}" iyz="0" izz="${BODY_SPHERE_INERTIA}" />
+      </inertial>
+      <visual>
+        <origin xyz="${-SPINE_SEGMENT_LENGTH} 0 0" rpy="0 0 0"/>
+        <geometry>
+          <sphere radius="${BODY_SPHERE_RADIUS}" />
+        </geometry>
+        <xacro:body_material/>
+      </visual>
+      <visual>
+        <origin xyz="${-SPINE_SEGMENT_LENGTH/2} 0 0" rpy="0 0 0"/>
+        <geometry>
+          <box size="${SPINE_SEGMENT_LENGTH} ${VISUAL_BOX_RATIO*SPINE_SEGMENT_LENGTH} ${VISUAL_BOX_RATIO*GIRDLE_WIDTH}"/>
+        </geometry>
+        <xacro:visual_box_material/>
+      </visual>
+      <collision>
+        <origin xyz="${-SPINE_SEGMENT_LENGTH} 0 0" rpy="0 0 0"/>
+        <geometry>
+          <sphere radius="${BODY_SPHERE_RADIUS}" />
+        </geometry>
+      </collision>
+    </link>
+  </xacro:macro> 
+
+  <xacro:macro name="spine_joint_macro" params="N">
+    <joint name="spine_joint_${N-1}_${N}" type="revolute">
+      <origin xyz="${-SPINE_SEGMENT_LENGTH} 0 0" rpy="0 0 0"/>
+      <axis xyz="0 0 1"/>
+      <parent link="spine_link_${N-1}"/>
+      <child link="spine_link_${N}"/>
+      <dynamics damping="${JOINT_DAMPING}" friction="${JOINT_FRICTION}"/>
+      <limit effort="30" velocity="1.0" lower="-${SPINE_BENDING_LIMIT}" upper="${SPINE_BENDING_LIMIT}" />
+    </joint>
+  </xacro:macro>-->
+
   <xacro:macro name="leg_macro" params="prefix reflect">
     <link name="${prefix}_girdle_connection_1">
       <inertial>
@@ -183,13 +225,6 @@
     </joint>
   </xacro:macro>
 
-  <!-- Loop is off by one because forst segments is added manually -->
-  <xacro:macro name="spine_segments_loop" params="segments_qty">
-    <xacro:spine_segment_macro N="${SPINE_SEGMENTS_NUMBER + 2 - segments_qty}"/>
-    <xacro:if value="${segments_qty-1}">
-        <xacro:spine_segments_loop segments_qty="${segments_qty-1}" />
-    </xacro:if>
-  </xacro:macro>
 
 
 <!-- ########### MODEL LINKS AND JOINTS ########### -->
@@ -235,58 +270,78 @@
         <inertia ixx="${BODY_SPHERE_INERTIA/100}"  ixy="0"  ixz="0" iyy="${BODY_SPHERE_INERTIA/100}" iyz="0" izz="${BODY_SPHERE_INERTIA/100}" />
       </inertial>
     </link>
-  <link name="spine_link_1">
-    <inertial>
-    <origin xyz="${-SPINE_SEGMENT_LENGTH} 0 0" rpy="0 0 0"/>
-      <mass value="${BODY_SPHERE_MASS}"/>
-      <inertia ixx="${BODY_SPHERE_INERTIA}"  ixy="0"  ixz="0" iyy="${BODY_SPHERE_INERTIA}" iyz="0" izz="${BODY_SPHERE_INERTIA}" />
-    </inertial>
-    <visual>
+    <link name="spine_link_1">
+      <inertial>
       <origin xyz="${-SPINE_SEGMENT_LENGTH} 0 0" rpy="0 0 0"/>
-      <geometry>
-        <sphere radius="${BODY_SPHERE_RADIUS}" />
-      </geometry>
-      <xacro:body_material/>
-    </visual>
-    <visual>
-      <origin xyz="${-SPINE_SEGMENT_LENGTH/2} 0 0" rpy="0 0 0"/>
-      <geometry>
-        <box size="${SPINE_SEGMENT_LENGTH} ${VISUAL_BOX_RATIO*SPINE_SEGMENT_LENGTH} ${VISUAL_BOX_RATIO*GIRDLE_WIDTH}"/>
-      </geometry>
-      <xacro:visual_box_material/>
-    </visual>
-    <collision>
-      <origin xyz="${-SPINE_SEGMENT_LENGTH} 0 0" rpy="0 0 0"/>
-      <geometry>
-        <sphere radius="${BODY_SPHERE_RADIUS}" />
-      </geometry>
-    </collision>
-  </link>
-  <joint name="spine_dorsal_joint_1" type="revolute">
-    <origin xyz="${-GIRDLE_LENGTH} 0 0" rpy="${-PI/2} 0 0"/>
+        <mass value="${BODY_SPHERE_MASS}"/>
+        <inertia ixx="${BODY_SPHERE_INERTIA}"  ixy="0"  ixz="0" iyy="${BODY_SPHERE_INERTIA}" iyz="0" izz="${BODY_SPHERE_INERTIA}" />
+      </inertial>
+      <visual>
+        <origin xyz="${-SPINE_SEGMENT_LENGTH} 0 0" rpy="0 0 0"/>
+        <geometry>
+          <sphere radius="${BODY_SPHERE_RADIUS}" />
+        </geometry>
+        <xacro:body_material/>
+      </visual>
+      <visual>
+        <origin xyz="${-SPINE_SEGMENT_LENGTH/2} 0 0" rpy="0 0 0"/>
+        <geometry>
+          <box size="${SPINE_SEGMENT_LENGTH} ${VISUAL_BOX_RATIO*SPINE_SEGMENT_LENGTH} ${VISUAL_BOX_RATIO*GIRDLE_WIDTH}"/>
+        </geometry>
+        <xacro:visual_box_material/>
+      </visual>
+      <collision>
+        <origin xyz="${-SPINE_SEGMENT_LENGTH} 0 0" rpy="0 0 0"/>
+        <geometry>
+          <sphere radius="${BODY_SPHERE_RADIUS}" />
+        </geometry>
+      </collision>
+    </link>
+    <joint name="spine_dorsal_joint_1" type="revolute">
+      <origin xyz="${-GIRDLE_LENGTH} 0 0" rpy="${-PI/2} 0 0"/>
+      <axis xyz="0 0 1"/>
+      <parent link="girdle"/>
+      <child link="spine_connection_1"/>
+      <dynamics damping="${JOINT_DAMPING}" friction="${JOINT_FRICTION}"/>
+      <limit effort="30" velocity="1.0" lower="-${SPINE_DORSAL_BENDING_LIMIT}" upper="${SPINE_DORSAL_BENDING_LIMIT}" />
+    </joint>
+    <joint name="spine_lateral_joint_1" type="revolute">
+      <origin xyz="0 0 0" rpy="${PI/2} 0 0"/>
+      <axis xyz="0 0 1"/>
+      <parent link="spine_connection_1"/>
+      <child link="spine_link_1"/>
+      <dynamics damping="${JOINT_DAMPING}" friction="${JOINT_FRICTION}"/>
+      <limit effort="30" velocity="1.0" lower="-${SPINE_LATERAL_BENDING_LIMIT}" upper="${SPINE_LATERAL_BENDING_LIMIT}" />
+    </joint>
+
+  <!--<xacro:spine_link_macro N="1"/>
+
+  <joint name="girdle_spine_joint" type="revolute">
+    <origin xyz="-${GIRDLE_LENGTH} 0 0" rpy="0 0 0"/>
     <axis xyz="0 0 1"/>
     <parent link="girdle"/>
-    <child link="spine_connection_1"/>
-    <dynamics damping="${JOINT_DAMPING}" friction="${JOINT_FRICTION}"/>
-    <limit effort="30" velocity="1.0" lower="-${SPINE_DORSAL_BENDING_LIMIT}" upper="${SPINE_DORSAL_BENDING_LIMIT}" />
-  </joint>
-  <joint name="spine_lateral_joint_1" type="revolute">
-    <origin xyz="0 0 0" rpy="${PI/2} 0 0"/>
-    <axis xyz="0 0 1"/>
-    <parent link="spine_connection_1"/>
     <child link="spine_link_1"/>
     <dynamics damping="${JOINT_DAMPING}" friction="${JOINT_FRICTION}"/>
-    <limit effort="30" velocity="1.0" lower="-${SPINE_LATERAL_BENDING_LIMIT}" upper="${SPINE_LATERAL_BENDING_LIMIT}" />
+    <limit effort="30" velocity="1.0" lower="-${SPINE_BENDING_LIMIT}" upper="${SPINE_BENDING_LIMIT}" />
   </joint>
+  
+  <xacro:spine_link_macro N="2"/>
+  <xacro:spine_joint_macro N="2"/>
 
-  <xacro:spine_segments_loop segments_qty="${SPINE_SEGMENTS_NUMBER}"/>
+  <xacro:spine_link_macro N="3"/>
+  <xacro:spine_joint_macro N="3"/>
 
-<!--
+  <xacro:spine_link_macro N="4"/>
+  <xacro:spine_joint_macro N="4"/>
+
+  <xacro:spine_link_macro N="5"/>
+  <xacro:spine_joint_macro N="5"/>
+  -->
+
   <xacro:spine_segment_macro N="2"/>
   <xacro:spine_segment_macro N="3"/>
   <xacro:spine_segment_macro N="4"/>
   <xacro:spine_segment_macro N="5"/>
-  -->
 
   <xacro:leg_macro prefix="right" reflect="1"/>
   <xacro:leg_macro prefix="left" reflect="-1"/>
