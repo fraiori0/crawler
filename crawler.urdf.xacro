@@ -195,7 +195,7 @@
 <!-- ########### MODEL LINKS AND JOINTS ########### -->
   <link name="girdle">
    <inertial>
-     <origin xyz="0 0 0" rpy="0 0 0"/>
+     <origin xyz="0.1 0 0" rpy="0 0 0"/>
      <mass value="${BODY_SPHERE_MASS}"/>
      <inertia ixx="${BODY_SPHERE_INERTIA}"  ixy="0"  ixz="0" iyy="${BODY_SPHERE_INERTIA}" iyz="0" izz="${BODY_SPHERE_INERTIA}" />
    </inertial>

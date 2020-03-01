@@ -16,7 +16,7 @@
   <!-- ########### MODEL LINKS AND JOINTS ########### -->
   <link name="girdle">
     <inertial>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <origin rpy="0 0 0" xyz="0.1 0 0"/>
       <mass value="0.1"/>
       <inertia ixx="0.000204081632653" ixy="0" ixz="0" iyy="0.000204081632653" iyz="0" izz="0.000204081632653"/>
     </inertial>
