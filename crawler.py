@@ -4,6 +4,18 @@ import time
 import pybullet_data
 from math import *
 
+class Discretel_Low_Pass:
+    def __init__(self, dt, tc, K=1):
+        self.x = 0
+        self.dt = dt
+        self.tc = tc
+        self.K = K
+    def reset(self):
+        self.x = 0
+    def filter(self, signal):
+        self.x = (1-self.dt/self.tc)*self.x + self.K*self.dt/self.tc * signal
+        return self.x
+
 class Crawler:
 
     def __init__(self, spine_segments, urdf_path="/home/fra/Uni/Tesi/crawler", base_position=[0,0,0.2], base_orientation=[0,0,0,1]):
@@ -139,31 +151,30 @@ class Crawler:
     def get_joints_speeds_tuple(self):
         return list(zip(*(p.getJointStates(self.Id,list(range(0,self.num_joints))))))[1]
 
-    def prova_jacobian(self, link_index, base_eu_d):
-        #base_eu_d is a tuple containing the derivatives of the euler's angles describing the base orientation
-        self.set_links_state_array()
-        COM_vel = np.asarray(p.getLinkState(self.Id, link_index, computeLinkVelocity=1)[6])
-        joints_pos = self.get_joints_pos_tuple()
-        Jt, Jr = np.asarray(
-            p.calculateJacobian(self.Id,
-                link_index,
-                self.links_state_array[link_index]["loc_com_trn"],
-                joints_pos,
-                #[0.0]*(self.num_joints),
-                self.get_joints_speeds_tuple(),
-                [0.0]*(self.num_joints))
-            )
-        print("\nJt", Jt)
-        print("\nJr", Jr)
-        qdot = np.asarray(p.getBaseVelocity(self.Id)[1] + p.getBaseVelocity(self.Id)[0] + self.get_joints_speeds_tuple())
-        jacobian_vel= np.dot(Jt,qdot)
-        print("LINK %d" %link_index)
-        print("True COM speed: ",COM_vel,"\nComputed w/ Jacobian: ",jacobian_vel)
-        return
+    # def prova_jacobian(self, link_index, base_eu_d):
+    #     #base_eu_d is a tuple containing the derivatives of the euler's angles describing the base orientation
+    #     self.set_links_state_array()
+    #     COM_vel = np.asarray(p.getLinkState(self.Id, link_index, computeLinkVelocity=1)[6])
+    #     joints_pos = self.get_joints_pos_tuple()
+    #     Jt, Jr = np.asarray(
+    #         p.calculateJacobian(self.Id,
+    #             link_index,
+    #             self.links_state_array[link_index]["loc_com_trn"],
+    #             joints_pos,
+    #             #[0.0]*(self.num_joints),
+    #             self.get_joints_speeds_tuple(),
+    #             [0.0]*(self.num_joints))
+    #         )
+    #     print("\nJt", Jt)
+    #     print("\nJr", Jr)
+    #     qdot = np.asarray(p.getBaseVelocity(self.Id)[1] + p.getBaseVelocity(self.Id)[0] + self.get_joints_speeds_tuple())
+    #     jacobian_vel= np.dot(Jt,qdot)
+    #     print("LINK %d" %link_index)
+    #     print("True COM speed: ",COM_vel,"\nComputed w/ Jacobian: ",jacobian_vel)
+    #     return
     
     def get_base_Eulers(self):
-        eu = p.getEulerFromQuaternion(p.getBasePositionAndOrientation(self.Id)[1])
-        return  eu
+        return  p.getEulerFromQuaternion(p.getBasePositionAndOrientation(self.Id)[1])
 
     def COM_trn_jacobian(self):
         #Jacobian of the COM is computed as the weighted mean (with respect to masses) of the Jacobian of the links
@@ -171,9 +182,9 @@ class Crawler:
             # plus null terms associated to the base angular speed and the joints speed terms (thus 3+self.num_joints)
             # NOTE: angular speed values are null just because the COM of the girdle is at the origin of the link frame
         self.set_links_state_array()
-        Jbase_t = np.asarray([[1,0,0]+[0]*(3+self.num_joints),
-                            [0,1,0]+[0]*(3+self.num_joints),
-                            [0,0,1]+[0]*(3+self.num_joints) ])
+        Jbase_t = np.asarray([  [0.0]*3 + [1.0,0.0,0.0] + [0.0]*(self.num_joints),
+                                [0.0]*3 + [0.0,1.0,0.0] + [0.0]*(self.num_joints),
+                                [0.0]*3 + [0.0,0.0,1.0] + [0.0]*(self.num_joints) ])
         JM_t = Jbase_t*(p.getDynamicsInfo(self.Id,-1)[0])
         joints_pos = self.get_joints_pos_tuple()
         for i in range(0,self.num_joints):
@@ -182,7 +193,7 @@ class Crawler:
                     i,
                     self.links_state_array[i]["loc_com_trn"],
                     joints_pos,
-                    [0.0]*(self.num_joints),
+                    self.get_joints_speeds_tuple(),
                     [0.0]*(self.num_joints))
                 )[0]
             JM_t += Ji_t * (p.getDynamicsInfo(self.Id,i)[0])
