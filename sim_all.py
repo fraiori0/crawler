@@ -1,8 +1,13 @@
 import pybullet as p
 import numpy as np
+import matplotlib
+import matplotlib.pyplot as plt
 import time
 import pybullet_data
+import crawler
 from math import *
+
+matplotlib.use('TkAgg')
 
 class Crawler:
 
@@ -144,7 +149,7 @@ class Crawler:
         self.set_links_state_array()
         COM_vel = np.asarray(p.getLinkState(self.Id, link_index, computeLinkVelocity=1)[6])
         joints_pos = self.get_joints_pos_tuple()
-        Jt, Jr = np.asarray(
+        J = np.asarray(
             p.calculateJacobian(self.Id,
                 link_index,
                 self.links_state_array[link_index]["loc_com_trn"],
@@ -152,11 +157,9 @@ class Crawler:
                 #[0.0]*(self.num_joints),
                 self.get_joints_speeds_tuple(),
                 [0.0]*(self.num_joints))
-            )
-        print("\nJt", Jt)
-        print("\nJr", Jr)
-        qdot = np.asarray(p.getBaseVelocity(self.Id)[1] + p.getBaseVelocity(self.Id)[0] + self.get_joints_speeds_tuple())
-        jacobian_vel= np.dot(Jt,qdot)
+            )[0]
+        qdot = np.asarray(p.getBaseVelocity(self.Id)[0] + base_eu_d + self.get_joints_speeds_tuple())
+        jacobian_vel= np.dot(J,qdot)
         print("LINK %d" %link_index)
         print("True COM speed: ",COM_vel,"\nComputed w/ Jacobian: ",jacobian_vel)
         return
@@ -210,3 +213,68 @@ class Crawler:
 #     p.setJointMotorControl2(crawlerID,control_i[4],p.POSITION_CONTROL,targetPosition=0,force=20)
 #     #might be nice to add computed torque control with an adaptive part for estimating the torques required to counteract friction, but must be formulated properly
 #     return
+
+class Discretel_Low_Pass:
+    def __init__(self, dt, tc, K=1):
+        self.x = 0
+        self.dt = dt
+        self.tc = tc
+        self.K = K
+    def reset(self):
+        self.x = 0
+    def filter(self, signal):
+        self.x = (1-self.dt/self.tc)*self.x + self.K*self.dt/self.tc * signal
+        return self.x
+
+physicsClient = p.connect(p.GUI)
+p.setAdditionalSearchPath(pybullet_data.getDataPath())
+p.setGravity(0,0,-9.81)
+planeID = p.loadURDF("plane100.urdf", [0,0,0])
+model = crawler.Crawler(spine_segments=8,base_position=[0,0,1])
+#for i in range (500):
+#  p.stepSimulation()
+#  p.applyExternalForce(crawlerID, -1, [np.random.random_sample(), 3*np.random.random_sample(), np.random.random_sample()], [0, 0, 0], flags=p.WORLD_FRAME)
+#  time.sleep(1./240.)
+#time-step used for simulation and total time passed variable
+dt = 1./240.
+t = 0.0
+###
+model.turn_off_crawler()
+print("COM Jacobian:\n",model.COM_trn_jacobian,"\n\n")
+low_pass = Discretel_Low_Pass(dt,tc=1,K=1)
+eu0 = np.array((0,0,0))
+eu1 = np.array((0,0,0))
+eud_list = list()
+eud_list_filtered = list()
+for i in range (100):
+    ###
+    # p.applyExternalForce(model.Id, 
+    #     14, [0, 10*np.random.random_sample(),
+    #     np.random.random_sample()],
+    #     [0, 0, 0], flags=p.LINK_FRAME)
+    COM_prev = model.COM_position_world()
+    eu0 = eu1
+    ###
+    p.stepSimulation()
+    ### 
+    COM_curr = model.COM_position_world()
+    p.addUserDebugLine(COM_prev.tolist(), COM_curr.tolist(), lineColorRGB=[sin(4*pi*t),sin(4*pi*(t+0.33)),sin(4*pi*(t+0.67))],lineWidth=3, lifeTime=2)
+    eu1 = np.asarray(model.get_base_Eulers())
+    eud = (eu0-eu1)/dt
+    eud_f = low_pass.filter((eu0-eu1)/dt)
+    eud_list.append(eud)
+    eud_list_filtered.append(eud_f)
+    ###
+    time.sleep(dt)
+    t+=dt
+# qdot = np.asarray(p.getBaseVelocity(model.Id)[0] + p.getBaseVelocity(model.Id)[1] + model.get_joints_speeds_tuple())
+# j_COM_speed = np.dot(model.COM_trn_jacobian(),qdot)
+# print("True COM linear speed:  ", model.COM_velocity_world(),"\n","Linear speed computed w/ Jacobian:  ",j_COM_speed)
+# print(model.COM_trn_jacobian())
+fig, ax = plt.subplots()
+plt.plot(eud_list)
+plt.plot(eud_list_filtered)
+plt.show()
+model.prova_jacobian(7,base_eu_d=tuple(eud))
+
+p.disconnect()
