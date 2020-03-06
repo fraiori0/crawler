@@ -1,10 +1,12 @@
 import pybullet as p
 import numpy as np
+import scipy as sp
+import scipy.linalg as lna
 import time
 import pybullet_data
 from math import *
 
-class Discretel_Low_Pass:
+class Discrete_Low_Pass:
     def __init__(self, dt, tc, K=1):
         self.x = 0
         self.dt = dt
@@ -43,6 +45,16 @@ class Crawler:
         }
         #NOTE: joints_state_array doesn't include the state of the base to keep the correct id-numbers of the links
         self.links_state_array=[0]*self.num_joints
+        self.set_links_state_array()
+        #
+        self.mask_base = [0,1,2,3,4,5]
+        self.mask_joints = list(range(6,6+self.num_joints))
+        self.mask_act = list(np.arange(6, 6+self.num_joints-4,2))
+        self.mask_nact = list(np.arange(7, 6+self.num_joints-4,2))+list(range(6+self.num_joints-4,6+self.num_joints))
+        self.mask_right_girdle = [6+self.num_joints-4, 6+self.num_joints-3]
+        self.mask_left_girdle = [6+self.num_joints-2, 6+self.num_joints-1]
+        #
+        self.low_pass = Discrete_Low_Pass(dt=1/240, tc=10, K=1)
         
 
     def COM_position_world(self):
@@ -77,11 +89,11 @@ class Crawler:
     def generate_control_indices(self):
     #this function relies on knowledge of the order of the joints in the crawler model
     #if the URDF is modified in ways different than just amodeldding more segments to the spine this function should be updated properly
-        lat_joints_i = tuple(range(1,(p.getNumJoints(self.Id)-4),2))
-        r_girdle_flex_i = p.getNumJoints(self.Id)-4
-        r_girdle_abd_i = p.getNumJoints(self.Id)-3
-        l_girdle_flex_i = p.getNumJoints(self.Id)-2
-        l_girdle_abd_i = p.getNumJoints(self.Id)-1
+        lat_joints_i = tuple(range(1,(self.num_joints-4),2))
+        r_girdle_flex_i = self.num_joints-4
+        r_girdle_abd_i = self.num_joints-3
+        l_girdle_flex_i = self.num_joints-2
+        l_girdle_abd_i = self.num_joints-1
         return (lat_joints_i,r_girdle_flex_i,r_girdle_abd_i,l_girdle_flex_i,l_girdle_abd_i)
 
     def fix_right_foot(self, leg_index=17):
@@ -150,31 +162,66 @@ class Crawler:
 
     def get_joints_speeds_tuple(self):
         return list(zip(*(p.getJointStates(self.Id,list(range(0,self.num_joints))))))[1]
-
-    # def prova_jacobian(self, link_index, base_eu_d):
-    #     #base_eu_d is a tuple containing the derivatives of the euler's angles describing the base orientation
-    #     self.set_links_state_array()
-    #     COM_vel = np.asarray(p.getLinkState(self.Id, link_index, computeLinkVelocity=1)[6])
-    #     joints_pos = self.get_joints_pos_tuple()
-    #     Jt, Jr = np.asarray(
-    #         p.calculateJacobian(self.Id,
-    #             link_index,
-    #             self.links_state_array[link_index]["loc_com_trn"],
-    #             joints_pos,
-    #             #[0.0]*(self.num_joints),
-    #             self.get_joints_speeds_tuple(),
-    #             [0.0]*(self.num_joints))
-    #         )
-    #     print("\nJt", Jt)
-    #     print("\nJr", Jr)
-    #     qdot = np.asarray(p.getBaseVelocity(self.Id)[1] + p.getBaseVelocity(self.Id)[0] + self.get_joints_speeds_tuple())
-    #     jacobian_vel= np.dot(Jt,qdot)
-    #     print("LINK %d" %link_index)
-    #     print("True COM speed: ",COM_vel,"\nComputed w/ Jacobian: ",jacobian_vel)
-    #     return
     
     def get_base_Eulers(self):
         return  p.getEulerFromQuaternion(p.getBasePositionAndOrientation(self.Id)[1])
+    
+    def get_R_base_to_world(self):
+        # returned as a (3,3) NUMPY ARRAY
+        # R * x_base = x_world
+        quat_base = p.getBasePositionAndOrientation(self.Id)[1]
+        R = np.reshape(np.array(p.getMatrixFromQuaternion(quat_base)),(3,3))
+        return R
+    
+    def test_link_COM_jacobians(self,link_index):
+        #Jacobian of the COM is computed as the weighted mean (with respect to masses) of the Jacobian of the links
+        #The transational jacobian of the base is just the identity matrix multiplying the base translational velocity
+            # plus null terms associated to the base angular speed and the joints speed terms (thus 3+self.num_joints)
+            # NOTE: angular speed values are null just because the COM of the girdle is at the origin of the link frame
+        self.set_links_state_array()
+        joints_pos = self.get_joints_pos_tuple()
+        R = self.get_R_base_to_world()
+        ###
+        Ji = np.asarray(
+            p.calculateJacobian(self.Id,
+                link_index,
+                self.links_state_array[link_index]["loc_com_trn"],
+                joints_pos,
+                #[0.0]*(self.num_joints),
+                self.get_joints_speeds_tuple(),
+                [0.0]*(self.num_joints))
+            )
+        Jt_i = Ji[0]
+        Jtbrw_i = (R.dot(Jt_i[:,[0,1,2]])).dot(R.T)
+        Jtqw_i = R.dot(Jt_i[:,self.mask_joints])
+        Jtw_i = np.concatenate((Jtbrw_i, Jt_i[:,[3,4,5]], Jtqw_i),1)
+        # Jtqw_i = R.dot(Jt_i[:,self.mask_joints])
+        # Jtw_i = np.concatenate((Jt_i[:,self.mask_base], Jtqw_i),1)
+        ###
+        Jr_i = Ji[1]
+        Jrqw_i = R.dot(Jr_i[:,self.mask_joints])
+        Jrw_i = np.concatenate((Jr_i[:,self.mask_base], Jrqw_i),1)
+        ###
+        qd = np.asarray(p.getBaseVelocity(self.Id)[1] + p.getBaseVelocity(self.Id)[0] + self.get_joints_speeds_tuple())
+        qd = np.reshape(qd,(qd.shape[0],1))
+        ###
+        vt_J = tuple(np.ndarray.flatten(Jtw_i.dot(qd)))
+        vt_true = self.links_state_array[link_index]["world_com_vt"]
+        print("True_t: ",vt_true, "\nJaco_t: ",vt_J)
+        et = round(lna.norm(np.asarray(vt_J)-np.asarray(vt_true))/lna.norm(np.asarray(vt_true)),4)
+        print("et_rel = ",et)
+        ###
+        vr_J = tuple(np.ndarray.flatten(Jrw_i.dot(qd)))
+        vr_true = self.links_state_array[link_index]["world_com_vr"]
+        print("True_r: ",vr_true, "\nJaco_r: ",vr_J)
+        er = round(lna.norm(np.asarray(vr_J)-np.asarray(vr_true))/lna.norm(np.asarray(vt_true)),4)
+        print("er_rel = ",er)
+        ###
+        print("Jt: ",np.round(Jtw_i,3))
+        print("Jr: ",np.round(Jrw_i,3))
+        
+        #returned as NUMPY ARRAY
+        return
 
     def COM_trn_jacobian(self):
         #Jacobian of the COM is computed as the weighted mean (with respect to masses) of the Jacobian of the links
@@ -193,6 +240,7 @@ class Crawler:
                     i,
                     self.links_state_array[i]["loc_com_trn"],
                     joints_pos,
+                    #[0.0]*(self.num_joints),
                     self.get_joints_speeds_tuple(),
                     [0.0]*(self.num_joints))
                 )[0]
@@ -201,13 +249,76 @@ class Crawler:
         #returned as NUMPY ARRAY
         return JM_t
 
-    def solve_null_COM_y_speed(self):
+
+    def solve_null_COM_y_speed(self, K=1, k0=0.001):
         #Return the desired joint speeds of the spinal lateral joints to be used for velocity control
+        #NOTE: since the dorsal joints of the spine and the DOFs of the base are not actuated, xd_desired 
+            # is corrected (see report). Joints of the girdles are also not considered as actuated since their 
+            # speed is set independently
+        #Use constrained (convex) optimization to solve inverse kinematic, coupled with closed loop inverse kinematic
+            #to make the error converge esponentially
+        #q0d are projected inside the nullspace of the Jacobian (J) and can be chosen to minimize a cost function
+            # Chosen cost function is H(q)=sum(q_i ^2), to keep joints as near to 0 as possible while respecting the requirements
+            # given by inverse kinematics.
+            # H(q) minimum is found through gradient descent, by chosing q0d=-k0*gradient(H(q)) (easy for quadratic H(q))
+        #NOTE: refer to the notation in the report
+        mask_base = [0,1,2,3,4,5]
+        mask_act = list(np.arange(6, 6+self.num_joints-4,2))
+        mask_nact = list(np.arange(7, 6+self.num_joints-4,2))+list(range(6+self.num_joints-4,6+self.num_joints))
+        ###
+        bd = np.array(p.getBaseVelocity(self.Id)[1] + p.getBaseVelocity(self.Id)[0]) #(angular velocity, linear velocity)
+        bd = np.reshape(bd,(bd.shape[0],1))
+        #qd = np.asarray(p.getBaseVelocity(self.Id)[1] + p.getBaseVelocity(self.Id)[0] + self.get_joints_speeds_tuple())
+        qd = np.array((0,0,0,0,0,0)+self.get_joints_pos_tuple())
+        qd = np.reshape(qd,(qd.shape[0],1))
+        qda = qd[mask_act]
+        qdn = qd[mask_nact]
+        #print("qd check (qd, qda, qdn):\n", qd,"\n", qda, "\n", qdn)
+        ###
+        W = np.eye(qda.shape[0]) #weight matrix for the different joints ("how much should they try to minimize the cost of H(q)")
+        Winv = lna.inv(W)
+        Jy = self.COM_trn_jacobian()[1]
+        Jy = np.reshape(Jy,(1,Jy.shape[0]))
+        Jyb = Jy[:,mask_base]
+        Jya = Jy[:,mask_act]
+        Jyn = Jy[:,mask_nact]
+        Jwr = Winv.dot(Jya.T).dot(lna.inv(Jya.dot(Winv.dot(Jya.T))))
+        print("Jy.Winv.JyaT",Jya.dot(Winv.dot(Jya.T)))
+        #print("SHAPE JWR = ", Jwr.shape)
+        P = np.eye(qda.shape[0])-Jwr.dot(Jya)
+        #print("SHAPE P = ", P.shape)
+        ###
+        q0da = -2*k0*qda
+        #print("Shape q0da: ", q0da.shape, " should be (8,1)")
+        ###
+        xd_desired = 0 - Jyb.dot(bd) - Jyn.dot(qdn)
+        #print("xd_des: ", xd_desired)
+        COM_vy = Jy.dot(qd)
+        #COM_vy = self.COM_velocity_world()[1]
+        e = xd_desired-COM_vy #since we want the COM to have null speed along y axis the error is simply 0-COMv[y]
+        print("e_est: ",(COM_vy-(self.COM_velocity_world()[1])))
+        print("P.q0da: ",list(np.ndarray.flatten(P.dot(q0da))))
+        print("Jwr.(Ke): ",list(np.ndarray.flatten(Jwr.dot(K*e))))
+        print("Jwr.(xd_d): ",list(np.ndarray.flatten(Jwr.dot(xd_desired))))
+        #print("e: ", e)
+        ###
+        #print("SHAPE P.q0d = ", (P.dot(q0da)).shape)
+        #print("SHAPE Jwr.dot(xd_desired + K*e) = ", (Jwr.dot(xd_desired + K*e)).shape)
+        qd = Jwr.dot(xd_desired + K*e) + P.dot(q0da)
+        return qd
+
+    def velocity_control_lateral(self, K=1, fmax=10):
+        qd = np.ndarray.flatten(self.solve_null_COM_y_speed(K=K))
+        qdf = list(map(self.low_pass.filter,qd))
+        #print("YOH qd[3]: ",qd[3])
+        #print("YOH qdf[3]: ",qdf[3])
+        for index, joint_i in enumerate(self.control_indices[0]):
+            p.setJointMotorControl2(self.Id, joint_i, p.VELOCITY_CONTROL, targetVelocity=qdf[index],force=fmax)
         return
 
 
-#NOTE: constraints are set without using the values provided by the set_joints_state_array, might need to be modified if the leg in the URDF change
-#NOTE: add function for mapping link and joint indices to their name
+#NOTE: feet's constraints are set with their position using the values provided by the set_links_state_array, might need to be modified if the leg in the URDF change
+#NOTE: add function for mapping link and joint indices to their name?
 #NOTE: set_joints_state_array can be taken out of each function and called just once after stepping the simulation, for now is called inside each function to avoid errors
 
 # def crawler_control(crawlerID, control_i):
