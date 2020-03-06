@@ -173,7 +173,38 @@ class Crawler:
         R = np.reshape(np.array(p.getMatrixFromQuaternion(quat_base)),(3,3))
         return R
     
-    def test_link_COM_jacobians(self,link_index):
+    def get_link_COM_jacobian_world(self,link_index, R, joints_pos, link_state_set=False):
+        #NOTE: p.calculateJacobian outputs a Jacobian that gives the linear/angular velocity expressed
+            # in a reference frame oriented like the base but fixed in the global reference frame
+            # To get the velocities in the global reference frame we should transform the Jacobian (see report)
+        # R and joint_pos should be passed already computed (through the proper class' methods) to avoid recomputing them
+            # even if the simulation has not stepped between two calls and the state is still the same
+        # For the same reason self.set_links_state_array() should be called once (every time-step) just before using this function
+        if not link_state_set:
+            self.set_links_state_array()
+        ###
+        Ji = np.asarray(
+            p.calculateJacobian(self.Id,
+                link_index,
+                self.links_state_array[link_index]["loc_com_trn"],
+                joints_pos,
+                [0.0]*(self.num_joints),
+                #self.get_joints_speeds_tuple(),
+                [0.0]*(self.num_joints))
+            )
+        Jt_i = Ji[0]
+        Jtbrw_i = (R.dot(Jt_i[:,[0,1,2]])).dot(R.T)
+        Jtqw_i = R.dot(Jt_i[:,self.mask_joints])
+        Jtw_i = np.concatenate((Jtbrw_i, Jt_i[:,[3,4,5]], Jtqw_i),1)
+        ### rotation Jacobian
+        # Jr_i = Ji[1]
+        # Jrqw_i = R.dot(Jr_i[:,self.mask_joints])
+        # Jrw_i = np.concatenate((Jr_i[:,self.mask_base], Jrqw_i),1)
+        ###
+        #returned as NUMPY ARRAY
+        return Jtw_i
+
+    def COM_trn_jacobian(self):
         #Jacobian of the COM is computed as the weighted mean (with respect to masses) of the Jacobian of the links
         #The transational jacobian of the base is just the identity matrix multiplying the base translational velocity
             # plus null terms associated to the base angular speed and the joints speed terms (thus 3+self.num_joints)
@@ -182,69 +213,15 @@ class Crawler:
         joints_pos = self.get_joints_pos_tuple()
         R = self.get_R_base_to_world()
         ###
-        Ji = np.asarray(
-            p.calculateJacobian(self.Id,
-                link_index,
-                self.links_state_array[link_index]["loc_com_trn"],
-                joints_pos,
-                #[0.0]*(self.num_joints),
-                self.get_joints_speeds_tuple(),
-                [0.0]*(self.num_joints))
-            )
-        Jt_i = Ji[0]
-        Jtbrw_i = (R.dot(Jt_i[:,[0,1,2]])).dot(R.T)
-        Jtqw_i = R.dot(Jt_i[:,self.mask_joints])
-        Jtw_i = np.concatenate((Jtbrw_i, Jt_i[:,[3,4,5]], Jtqw_i),1)
-        # Jtqw_i = R.dot(Jt_i[:,self.mask_joints])
-        # Jtw_i = np.concatenate((Jt_i[:,self.mask_base], Jtqw_i),1)
-        ###
-        Jr_i = Ji[1]
-        Jrqw_i = R.dot(Jr_i[:,self.mask_joints])
-        Jrw_i = np.concatenate((Jr_i[:,self.mask_base], Jrqw_i),1)
-        ###
-        qd = np.asarray(p.getBaseVelocity(self.Id)[1] + p.getBaseVelocity(self.Id)[0] + self.get_joints_speeds_tuple())
-        qd = np.reshape(qd,(qd.shape[0],1))
-        ###
-        vt_J = tuple(np.ndarray.flatten(Jtw_i.dot(qd)))
-        vt_true = self.links_state_array[link_index]["world_com_vt"]
-        print("True_t: ",vt_true, "\nJaco_t: ",vt_J)
-        et = round(lna.norm(np.asarray(vt_J)-np.asarray(vt_true))/lna.norm(np.asarray(vt_true)),4)
-        print("et_rel = ",et)
-        ###
-        vr_J = tuple(np.ndarray.flatten(Jrw_i.dot(qd)))
-        vr_true = self.links_state_array[link_index]["world_com_vr"]
-        print("True_r: ",vr_true, "\nJaco_r: ",vr_J)
-        er = round(lna.norm(np.asarray(vr_J)-np.asarray(vr_true))/lna.norm(np.asarray(vt_true)),4)
-        print("er_rel = ",er)
-        ###
-        print("Jt: ",np.round(Jtw_i,3))
-        print("Jr: ",np.round(Jrw_i,3))
-        
-        #returned as NUMPY ARRAY
-        return
-
-    def COM_trn_jacobian(self):
-        #Jacobian of the COM is computed as the weighted mean (with respect to masses) of the Jacobian of the links
-        #The transational jacobian of the base is just the identity matrix multiplying the base translational velocity
-            # plus null terms associated to the base angular speed and the joints speed terms (thus 3+self.num_joints)
-            # NOTE: angular speed values are null just because the COM of the girdle is at the origin of the link frame
-        self.set_links_state_array()
         Jbase_t = np.asarray([  [0.0]*3 + [1.0,0.0,0.0] + [0.0]*(self.num_joints),
                                 [0.0]*3 + [0.0,1.0,0.0] + [0.0]*(self.num_joints),
                                 [0.0]*3 + [0.0,0.0,1.0] + [0.0]*(self.num_joints) ])
         JM_t = Jbase_t*(p.getDynamicsInfo(self.Id,-1)[0])
-        joints_pos = self.get_joints_pos_tuple()
+        ###
         for i in range(0,self.num_joints):
-            Ji_t = np.asarray(
-                p.calculateJacobian(self.Id,
-                    i,
-                    self.links_state_array[i]["loc_com_trn"],
-                    joints_pos,
-                    #[0.0]*(self.num_joints),
-                    self.get_joints_speeds_tuple(),
-                    [0.0]*(self.num_joints))
-                )[0]
-            JM_t += Ji_t * (p.getDynamicsInfo(self.Id,i)[0])
+            Jtw_i = self.get_link_COM_jacobian_world(i, R=R, joints_pos=joints_pos, link_state_set=True)
+            JM_t += Jtw_i * (p.getDynamicsInfo(self.Id,i)[0])
+        ###
         JM_t = JM_t/self.mass
         #returned as NUMPY ARRAY
         return JM_t
@@ -268,8 +245,8 @@ class Crawler:
         ###
         bd = np.array(p.getBaseVelocity(self.Id)[1] + p.getBaseVelocity(self.Id)[0]) #(angular velocity, linear velocity)
         bd = np.reshape(bd,(bd.shape[0],1))
-        #qd = np.asarray(p.getBaseVelocity(self.Id)[1] + p.getBaseVelocity(self.Id)[0] + self.get_joints_speeds_tuple())
-        qd = np.array((0,0,0,0,0,0)+self.get_joints_pos_tuple())
+        qd = np.asarray(p.getBaseVelocity(self.Id)[1] + p.getBaseVelocity(self.Id)[0] + self.get_joints_speeds_tuple())
+        #qd = np.array((0,0,0,0,0,0)+self.get_joints_pos_tuple())
         qd = np.reshape(qd,(qd.shape[0],1))
         qda = qd[mask_act]
         qdn = qd[mask_nact]
@@ -283,7 +260,7 @@ class Crawler:
         Jya = Jy[:,mask_act]
         Jyn = Jy[:,mask_nact]
         Jwr = Winv.dot(Jya.T).dot(lna.inv(Jya.dot(Winv.dot(Jya.T))))
-        print("Jy.Winv.JyaT",Jya.dot(Winv.dot(Jya.T)))
+        #print("Jy.Winv.JyaT",Jya.dot(Winv.dot(Jya.T)))
         #print("SHAPE JWR = ", Jwr.shape)
         P = np.eye(qda.shape[0])-Jwr.dot(Jya)
         #print("SHAPE P = ", P.shape)
@@ -296,11 +273,11 @@ class Crawler:
         COM_vy = Jy.dot(qd)
         #COM_vy = self.COM_velocity_world()[1]
         e = xd_desired-COM_vy #since we want the COM to have null speed along y axis the error is simply 0-COMv[y]
-        print("e_est: ",(COM_vy-(self.COM_velocity_world()[1])))
-        print("P.q0da: ",list(np.ndarray.flatten(P.dot(q0da))))
-        print("Jwr.(Ke): ",list(np.ndarray.flatten(Jwr.dot(K*e))))
-        print("Jwr.(xd_d): ",list(np.ndarray.flatten(Jwr.dot(xd_desired))))
-        #print("e: ", e)
+        #print("e_est: ",(COM_vy-(self.COM_velocity_world()[1])))
+        #print("P.q0da: ",list(np.ndarray.flatten(P.dot(q0da))))
+        #print("Jwr.(Ke): ",list(np.ndarray.flatten(Jwr.dot(K*e))))
+        #print("Jwr.(xd_d): ",list(np.ndarray.flatten(Jwr.dot(xd_desired))))
+        print("e: ", e)
         ###
         #print("SHAPE P.q0d = ", (P.dot(q0da)).shape)
         #print("SHAPE Jwr.dot(xd_desired + K*e) = ", (Jwr.dot(xd_desired + K*e)).shape)
@@ -313,7 +290,7 @@ class Crawler:
         #print("YOH qd[3]: ",qd[3])
         #print("YOH qdf[3]: ",qdf[3])
         for index, joint_i in enumerate(self.control_indices[0]):
-            p.setJointMotorControl2(self.Id, joint_i, p.VELOCITY_CONTROL, targetVelocity=qdf[index],force=fmax)
+            p.setJointMotorControl2(self.Id, joint_i, p.VELOCITY_CONTROL, targetVelocity=qd[index],force=fmax)
         return
 
 

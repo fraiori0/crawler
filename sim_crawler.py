@@ -29,14 +29,14 @@ eud_listx = list()
 eud_listx_filtered = list()
 for i in range (100):
     ###
-    f=[(0.5-np.random.random_sample()), 10*(0.5-np.random.random_sample()),
+    f=[(0*0.5-np.random.random_sample()), 0.01*(0.5-np.random.random_sample()),
         0*(0.5-np.random.random_sample())]
     #print(f)
     # p.applyExternalForce(model.Id, 
     #     -1, f,
     #     [0, 0, 0], flags=p.LINK_FRAME)
     COM_prev = model.COM_position_world()
-    #model.velocity_control_lateral(K=1,fmax=20)
+    model.velocity_control_lateral(K=1,fmax=2)
     #eu0 = eu1
     ###
     p.stepSimulation()
@@ -58,21 +58,21 @@ for i in range (100):
     time.sleep(dt)
     t+=dt
 
-# qdot = np.asarray(p.getBaseVelocity(model.Id)[1] + p.getBaseVelocity(model.Id)[0] + model.get_joints_speeds_tuple())
-# j_COM_speed = np.dot(model.COM_trn_jacobian(),qdot)
-# print("True COM linear speed:  ", model.COM_velocity_world(),"\n","Linear speed computed w/ Jacobian:  ",j_COM_speed)
-# print(model.COM_trn_jacobian()[1])
+qdot = np.asarray(p.getBaseVelocity(model.Id)[1] + p.getBaseVelocity(model.Id)[0] + model.get_joints_speeds_tuple())
+j_COM_speed = np.dot(model.COM_trn_jacobian(),qdot)
+print("True COM linear speed:  ", model.COM_velocity_world(),"\n","Linear speed computed w/ Jacobian:  ",j_COM_speed)
+print(model.COM_trn_jacobian()[1])
 # print(model.solve_null_COM_y_speed())
 
 # print("link %d" %6)
 # model.test_link_COM_jacobians(6)
 # print("\n")
 
-for i in range(0,20):
-    print("link %d" %i)
-    print("COM position base world: ", np.asarray(model.links_state_array[i]["world_com_trn"]
-        -np.asarray(p.getBasePositionAndOrientation(model.Id)[0])))
-    model.test_link_COM_jacobians(i)
-    print("\n")
+# for i in range(0,20):
+#     print("link %d" %i)
+#     print("COM position base world: ", np.asarray(model.links_state_array[i]["world_com_trn"]
+#         -np.asarray(p.getBasePositionAndOrientation(model.Id)[0])))
+#     model.test_link_COM_jacobians(i)
+#     print("\n")
 
 p.disconnect()
