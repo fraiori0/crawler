@@ -54,7 +54,7 @@ class Crawler:
         self.mask_right_girdle = [6+self.num_joints-4, 6+self.num_joints-3]
         self.mask_left_girdle = [6+self.num_joints-2, 6+self.num_joints-1]
         #
-        self.low_pass = Discrete_Low_Pass(dt=1/240, tc=10, K=1)
+        self.low_pass = Discrete_Low_Pass(dt=1/240, tc=100, K=1)
         
 
     def COM_position_world(self):
@@ -90,11 +90,11 @@ class Crawler:
     #this function relies on knowledge of the order of the joints in the crawler model
     #if the URDF is modified in ways different than just amodeldding more segments to the spine this function should be updated properly
         lat_joints_i = tuple(range(1,(self.num_joints-4),2))
-        r_girdle_flex_i = self.num_joints-4
-        r_girdle_abd_i = self.num_joints-3
-        l_girdle_flex_i = self.num_joints-2
-        l_girdle_abd_i = self.num_joints-1
-        return (lat_joints_i,r_girdle_flex_i,r_girdle_abd_i,l_girdle_flex_i,l_girdle_abd_i)
+        r_girdle_abd_i = self.num_joints-4
+        r_girdle_flex_i = self.num_joints-3
+        l_girdle_abd_i = self.num_joints-2
+        l_girdle_flex_i = self.num_joints-1
+        return (lat_joints_i,r_girdle_abd_i,r_girdle_flex_i,l_girdle_abd_i,l_girdle_flex_i)
 
     def fix_right_foot(self, leg_index=17):
         #constraint is generated at the origin of the center of mass of the leg, i.e. at center of the spherical "foot"
@@ -103,7 +103,7 @@ class Crawler:
             print("Error: remove right foot constraint before setting a new one")
         else:
             constId = p.createConstraint(self.Id, leg_index, -1,-1, p.JOINT_POINT2POINT, jointAxis=[0, 0, 0],
-                parentFramePosition=[self.leg_length, 0, 0], childFramePosition=list(p.getLinkState(self.Id,leg_index)[0]))
+                parentFramePosition=[0, 0, 0], childFramePosition=list(p.getLinkState(self.Id,leg_index)[0]))
             self.constraints["right_foot"]=constId
         return constId
 
@@ -114,7 +114,7 @@ class Crawler:
             print("Error: remove left foot constraint before setting a new one")
         else:
             constId = p.createConstraint(self.Id, leg_index, -1,-1, p.JOINT_POINT2POINT, jointAxis=[0, 0, 0],
-                parentFramePosition=[self.leg_length, 0, 0], childFramePosition=list(p.getLinkState(self.Id,leg_index)[0]))
+                parentFramePosition=[0, 0, 0], childFramePosition=list(p.getLinkState(self.Id,leg_index)[0]))
             self.constraints["left_foot"]=constId
         return constId
     
@@ -246,11 +246,9 @@ class Crawler:
         bd = np.array(p.getBaseVelocity(self.Id)[1] + p.getBaseVelocity(self.Id)[0]) #(angular velocity, linear velocity)
         bd = np.reshape(bd,(bd.shape[0],1))
         qd = np.asarray(p.getBaseVelocity(self.Id)[1] + p.getBaseVelocity(self.Id)[0] + self.get_joints_speeds_tuple())
-        #qd = np.array((0,0,0,0,0,0)+self.get_joints_pos_tuple())
         qd = np.reshape(qd,(qd.shape[0],1))
         qda = qd[mask_act]
         qdn = qd[mask_nact]
-        #print("qd check (qd, qda, qdn):\n", qd,"\n", qda, "\n", qdn)
         ###
         W = np.eye(qda.shape[0]) #weight matrix for the different joints ("how much should they try to minimize the cost of H(q)")
         Winv = lna.inv(W)
@@ -260,52 +258,72 @@ class Crawler:
         Jya = Jy[:,mask_act]
         Jyn = Jy[:,mask_nact]
         Jwr = Winv.dot(Jya.T).dot(lna.inv(Jya.dot(Winv.dot(Jya.T))))
-        #print("Jy.Winv.JyaT",Jya.dot(Winv.dot(Jya.T)))
-        #print("SHAPE JWR = ", Jwr.shape)
         P = np.eye(qda.shape[0])-Jwr.dot(Jya)
-        #print("SHAPE P = ", P.shape)
         ###
         q0da = -2*k0*qda
-        #print("Shape q0da: ", q0da.shape, " should be (8,1)")
         ###
         xd_desired = 0 - Jyb.dot(bd) - Jyn.dot(qdn)
-        #print("xd_des: ", xd_desired)
-        COM_vy = Jy.dot(qd)
-        #COM_vy = self.COM_velocity_world()[1]
-        e = xd_desired-COM_vy #since we want the COM to have null speed along y axis the error is simply 0-COMv[y]
-        #print("e_est: ",(COM_vy-(self.COM_velocity_world()[1])))
-        #print("P.q0da: ",list(np.ndarray.flatten(P.dot(q0da))))
-        #print("Jwr.(Ke): ",list(np.ndarray.flatten(Jwr.dot(K*e))))
-        #print("Jwr.(xd_d): ",list(np.ndarray.flatten(Jwr.dot(xd_desired))))
-        print("e: ", e)
+        #COM_vy = Jy.dot(qd)
+        COM_vy = self.COM_velocity_world()[1]
+        e = xd_desired-COM_vy
         ###
-        #print("SHAPE P.q0d = ", (P.dot(q0da)).shape)
-        #print("SHAPE Jwr.dot(xd_desired + K*e) = ", (Jwr.dot(xd_desired + K*e)).shape)
-        qd = Jwr.dot(xd_desired + K*e) + P.dot(q0da)
-        return qd
+        qda = np.ndarray.flatten(Jwr.dot(xd_desired + K*e) + P.dot(q0da))
+        #returned flattened as a NUMPY ARRAY (qda.shape,)
+        return (qda, e)
 
-    def velocity_control_lateral(self, K=1, fmax=10):
-        qd = np.ndarray.flatten(self.solve_null_COM_y_speed(K=K))
+    def control_spine_lateral(self, K=1, fmax=0.1):
+        #for now it is able to keep a low error (order of 0.1 on the y speed of the COM)
+            # until it reachs the limits of the joints.
+            # Performances are limited probably by the PD controller on single joints.
+            # Best performances seem to be obtained with low value of fmax
+        control = self.solve_null_COM_y_speed(K=K)
+        qd = control[0]
+        e = control[1]
         qdf = list(map(self.low_pass.filter,qd))
-        #print("YOH qd[3]: ",qd[3])
-        #print("YOH qdf[3]: ",qdf[3])
         for index, joint_i in enumerate(self.control_indices[0]):
-            p.setJointMotorControl2(self.Id, joint_i, p.VELOCITY_CONTROL, targetVelocity=qd[index],force=fmax)
-        return
+            p.setJointMotorControl2(self.Id, joint_i, p.VELOCITY_CONTROL, targetVelocity=qdf[index],force=fmax)
+        # e is a NUMPY ARRAY
+        return e
+    
+    # def girdle_flexion_control(self, RL=(False,False), to_neutral=(True,True), angles=(0,0), fmax=0.1, Kp=1, Kd=0.1):
+    #     if (not(RL[0]) and not(RL[1])):
+    #         # equivalent of a NOR gate, if no joint need to be controlled avoid every computation and exit
+    #         return
+    #     if RL[0]:
+    #         angle_R = self.neutral_contact_flexion_angle if to_neutral else angles[0]
+    #         p.setJointMotorControl2(self.Id,
+    #             self.mask_right_girdle[1],
+    #             p.POSITION_CONTROL,
+    #             targetPosition = angle_R,
+    #             fmax = fmax)
+        
+    #     return
+    # def control_stance_abduction(self,thetaf,t, leg="R", fmax=0.1, Kp=1, Kd=0.1):
+    #     # control the leg abduction from the current position to thetaf, following a cosine 
+    #         # to have null speed at the start and at the end of the movement.
+    #         # Sigmoid function could also be used for a slightly different behaviour
+    #     #NOTE:theta0>thetaf
+    #     if (leg=="R"):
+    #         joint_i = self.mask_right_girdle[0]
+    #     elif (leg=="L"):
+    #         joint_i = self.mask_left_girdle[0]
+    #     thetaR0 = p.getJointState(self.Id,joint_i)[0]
+    #     thetaRf = -pi/4
+    #     thetaR = (thetaR0+thetaf)/2 + (thetaR0-thetaf)*cos(pi*t)/2
+    #     p.setJointMotorControl2(self.Id, 
+    #         self.mask_right_girdle[0],
+    #         p.POSITION_CONTROL,
+    #         targetPosition = thetaR,
+    #         fmax = 1,
+    #         positionGain=1,
+    #         velocityGain=0.5)
 
 
-#NOTE: feet's constraints are set with their position using the values provided by the set_links_state_array, might need to be modified if the leg in the URDF change
-#NOTE: add function for mapping link and joint indices to their name?
-#NOTE: set_joints_state_array can be taken out of each function and called just once after stepping the simulation, for now is called inside each function to avoid errors
 
-# def crawler_control(crawlerID, control_i):
-#     #the index of the joints to be controlled are considered to be the tuple generated through get_crawler_control_index
-#     #control_i = ((indices of lateral spine joint), right girdle flexion, right girdle abduction, left girdle flexion, left girdle abduction)
-#     for i in control_i[0]:
-#         p.setJointMotorControl2(crawlerID,i,p.POSITION_CONTROL, targetPosition=0,force=20)
-#     p.setJointMotorControl2(crawlerID,control_i[1],p.POSITION_CONTROL,targetPosition=0,force=20)
-#     p.setJointMotorControl2(crawlerID,control_i[2],p.POSITION_CONTROL,targetPosition=0,force=20)
-#     p.setJointMotorControl2(crawlerID,control_i[3],p.POSITION_CONTROL,targetPosition=0,force=20)
-#     p.setJointMotorControl2(crawlerID,control_i[4],p.POSITION_CONTROL,targetPosition=0,force=20)
-#     #might be nice to add computed torque control with an adaptive part for estimating the torques required to counteract friction, but must be formulated properly
-#     return
+#NOTE 1: feet's constraints are set with their position using the values provided by the set_links_state_array,
+    # might need to be modified if the leg in the URDF change
+#NOTE 2: add function for mapping link and joint indices to their name?
+#NOTE 3: set_joints_state_array can be taken out of each function and called just 
+    # once after stepping the simulation, for now is called inside each function to avoid errors
+#NOTE 4: might be nice to add computed torque control with an adaptive part for estimating 
+    # the torques required to counteract friction, but must be formulated properly

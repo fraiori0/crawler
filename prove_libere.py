@@ -4,12 +4,23 @@ from matplotlib.pyplot import plot
 import pybullet as p
 from math import *
 
+def yoh_func(RL=(False,False)):
+    if not(RL[0]) and not(RL[1]):
+        print("yoh")
+        return
+    else:
+        print("not yoh")
+        return
+yoh_func(RL=(False,False))
+yoh_func(RL=(True,False))
+yoh_func(RL=(True,True))
+yoh_func(RL=(False,True))
 
-R=np.reshape(np.array(p.getMatrixFromQuaternion([0,0,sin(pi/5/2),cos(pi/5/2)])),(3,3))
-Rinv = np.linalg.inv(R)
-print(R.dot(Rinv))
-print(R,"\n",Rinv)
-print(p.getMatrixFromQuaternion([0,0,sin(pi/5/2),cos(pi/5/2)]))
+# R=np.reshape(np.array(p.getMatrixFromQuaternion([0,0,sin(pi/5/2),cos(pi/5/2)])),(3,3))
+# Rinv = np.linalg.inv(R)
+# print(R.dot(Rinv))
+# print(R,"\n",Rinv)
+# print(p.getMatrixFromQuaternion([0,0,sin(pi/5/2),cos(pi/5/2)]))
 
 # def yoh(x):
 #     print(x+1)

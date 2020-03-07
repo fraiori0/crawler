@@ -13,7 +13,7 @@ physicsClient = p.connect(p.GUI)
 p.setAdditionalSearchPath(pybullet_data.getDataPath())
 p.setGravity(0,0,-9.81)
 planeID = p.loadURDF("plane100.urdf", [0,0,0])
-model = crw.Crawler(spine_segments=8,base_position=[0,0,0.2], base_orientation=[0,0,0,1])
+model = crw.Crawler(spine_segments=8,base_position=[0,0,0.1], base_orientation=[0,0,0,1])
 
 np.random.seed()
 #time-step used for simulation and total time passed variable
@@ -27,41 +27,51 @@ eu0 = np.array((0,0,0))
 eu1 = np.array((0,0,0))
 eud_listx = list()
 eud_listx_filtered = list()
+#let the model fall
+for i in range (50):
+    p.stepSimulation()
+    time.sleep(dt)
+
+
+### fix right foot
+model.fix_right_foot()
 for i in range (100):
     ###
-    f=[(0*0.5-np.random.random_sample()), 0.01*(0.5-np.random.random_sample()),
-        0*(0.5-np.random.random_sample())]
+    # f=[(0*0.5-np.random.random_sample()), 0.01*(0.5-np.random.random_sample()),
+    #     0*(0.5-np.random.random_sample())]
     #print(f)
     # p.applyExternalForce(model.Id, 
     #     -1, f,
     #     [0, 0, 0], flags=p.LINK_FRAME)
     COM_prev = model.COM_position_world()
-    model.velocity_control_lateral(K=1,fmax=2)
     #eu0 = eu1
     ###
+    ###
     p.stepSimulation()
-    ### 
+    t+=dt
+    ###
+    ###
+    ### right leg stance control
+    t_stance = 0.5
+    thetaR0 = p.getJointState(model.Id, model.control_indices[1])[0]
+    thetaRf = -pi/4
+    thetaR = (thetaR0+thetaRf)/2 + (thetaR0-thetaRf)*cos(pi*t/t_stance)/2
+    p.setJointMotorControl2(model.Id, 
+        model.control_indices[1],
+        p.POSITION_CONTROL,
+        targetPosition = thetaR,
+        force = 1,
+        positionGain=1,
+        velocityGain=0.5)
+    # ### control spine's lateral joints
+    e = model.control_spine_lateral(K=1,fmax=0.1)
+    print("e = ", np.round(e,5))
+    ### show COM trajectory
     COM_curr = model.COM_position_world()
     p.addUserDebugLine(COM_prev.tolist(), COM_curr.tolist(), lineColorRGB=[sin(4*pi*t),sin(4*pi*(t+0.33)),sin(4*pi*(t+0.67))],lineWidth=3, lifeTime=2)
-    # eu1 = np.asarray(model.get_base_Eulers())
-    # deu = 
-    # eud = (eu0-eu1)/dt
-    # eud_f = np.asarray(
-    #     (low_pass.filter(eu0[0]-eu1[0]),
-    #     low_pass.filter(eu0[1]-eu1[1]),
-    #     low_pass.filter(eu0[2]-eu1[2])
-    #       )
-    #     )/dt
-    # eud_listx.append(eud[1])
-    # eud_listx_filtered.append(eud_f[1])
     ###
     time.sleep(dt)
-    t+=dt
 
-qdot = np.asarray(p.getBaseVelocity(model.Id)[1] + p.getBaseVelocity(model.Id)[0] + model.get_joints_speeds_tuple())
-j_COM_speed = np.dot(model.COM_trn_jacobian(),qdot)
-print("True COM linear speed:  ", model.COM_velocity_world(),"\n","Linear speed computed w/ Jacobian:  ",j_COM_speed)
-print(model.COM_trn_jacobian()[1])
 # print(model.solve_null_COM_y_speed())
 
 # print("link %d" %6)
