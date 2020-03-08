@@ -111,21 +111,21 @@
         </geometry>
       </collision>
     </link>
-    <joint name="spine_dorsal_joint_${N}" type="revolute">
-      <origin xyz="${-SPINE_SEGMENT_LENGTH} 0 0" rpy="${-PI/2} 0 0"/>
+    <joint name="spine_lateral_joint_${N}" type="revolute">
+      <origin xyz="${-SPINE_SEGMENT_LENGTH} 0 0" rpy="${PI/2} 0 0"/>
       <axis xyz="0 0 1"/>
       <parent link="spine_link_${N-1}"/>
       <child link="spine_connection_${N}"/>
       <dynamics damping="${JOINT_DAMPING}" friction="${JOINT_FRICTION}"/>
-      <limit effort="30" velocity="1.0" lower="-${SPINE_DORSAL_BENDING_LIMIT}" upper="${SPINE_DORSAL_BENDING_LIMIT}" />
+      <limit effort="30" velocity="1.0" lower="-${SPINE_LATERAL_BENDING_LIMIT}" upper="${SPINE_LATERAL_BENDING_LIMIT}" />
     </joint>
-    <joint name="spine_lateral_joint_${N}" type="revolute">
-      <origin xyz="0 0 0" rpy="${PI/2} 0 0"/>
+    <joint name="spine_dorsal_joint_${N}" type="revolute">
+      <origin xyz="0 0 0" rpy="${-PI/2} 0 0"/>
       <axis xyz="0 0 1"/>
       <parent link="spine_connection_${N}"/>
       <child link="spine_link_${N}"/>
       <dynamics damping="${JOINT_DAMPING}" friction="${JOINT_FRICTION}"/>
-      <limit effort="30" velocity="1.0" lower="-${SPINE_LATERAL_BENDING_LIMIT}" upper="${SPINE_LATERAL_BENDING_LIMIT}" />
+      <limit effort="30" velocity="1.0" lower="-${SPINE_DORSAL_BENDING_LIMIT}" upper="${SPINE_DORSAL_BENDING_LIMIT}" />
     </joint>
   </xacro:macro>
 
@@ -137,7 +137,7 @@
         <inertia ixx="${LEG_TIP_INERTIA/100}"  ixy="0"  ixz="0" iyy="${LEG_TIP_INERTIA/100}" iyz="0" izz="${LEG_TIP_INERTIA/100}" />
       </inertial>
     </link>
-    <!--NOTE: currently leg joints have symmetrical limits, to avoid problem deriving from having symmetrical reference frame-->
+    <!--NOTE: currently leg joints have symmetrical limits, to avoid problems deriving from having reflected reference frames-->
     <joint name="${prefix}_girdle_abduction_joint" type="revolute">
       <origin xyz="0 ${-reflect*GIRDLE_WIDTH} 0" rpy="0 0 ${-reflect*PI/2}"/>
       <axis xyz="0 0 1"/>
@@ -173,7 +173,7 @@
         </geometry>
       </collision>
     </link>
-    <!--NOTE: currently leg joints have symmetrical limits, to avoid problem deriving from having symmetrical reference frame-->
+    <!--NOTE: currently leg joints have symmetrical limits, to avoid problems deriving from having reflected reference frames-->
     <joint name="${prefix}_girdle_flection_joint" type="revolute">
       <origin xyz="0 0 0" rpy="${-reflect*PI/2} 0 0"/>
       <axis xyz="0 0 1"/>
@@ -278,21 +278,21 @@
       </geometry>
     </collision>
   </link>
-  <joint name="spine_dorsal_joint_1" type="revolute">
-    <origin xyz="${-GIRDLE_LENGTH} 0 0" rpy="${-PI/2} 0 0"/>
+  <joint name="spine_lateral_joint_1" type="revolute">
+    <origin xyz="${-GIRDLE_LENGTH} 0 0" rpy="0 0 0"/>
     <axis xyz="0 0 1"/>
     <parent link="girdle"/>
     <child link="spine_connection_1"/>
     <dynamics damping="${JOINT_DAMPING}" friction="${JOINT_FRICTION}"/>
-    <limit effort="30" velocity="1.0" lower="-${SPINE_DORSAL_BENDING_LIMIT}" upper="${SPINE_DORSAL_BENDING_LIMIT}" />
+    <limit effort="30" velocity="1.0" lower="-${SPINE_LATERAL_BENDING_LIMIT}" upper="${SPINE_LATERAL_BENDING_LIMIT}" />
   </joint>
-  <joint name="spine_lateral_joint_1" type="revolute">
-    <origin xyz="0 0 0" rpy="${PI/2} 0 0"/>
+  <joint name="spine_dorsal_joint_1" type="revolute">
+    <origin xyz="0 0 0" rpy="${-PI/2} 0 0"/>
     <axis xyz="0 0 1"/>
     <parent link="spine_connection_1"/>
     <child link="spine_link_1"/>
     <dynamics damping="${JOINT_DAMPING}" friction="${JOINT_FRICTION}"/>
-    <limit effort="30" velocity="1.0" lower="-${SPINE_LATERAL_BENDING_LIMIT}" upper="${SPINE_LATERAL_BENDING_LIMIT}" />
+    <limit effort="30" velocity="1.0" lower="-${SPINE_DORSAL_BENDING_LIMIT}" upper="${SPINE_DORSAL_BENDING_LIMIT}" />
   </joint>
 
   <xacro:spine_segments_loop segments_qty="${SPINE_SEGMENTS_NUMBER}"/>

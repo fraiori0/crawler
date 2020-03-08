@@ -7,20 +7,33 @@ import pybullet_data
 from math import *
 
 class Discrete_Low_Pass:
-    def __init__(self, dt, tc, K=1):
-        self.x = 0
+    def __init__(self, dim, dt, fc, K=1):
+        #fc is the cut-off frequency
+        self.x = np.array([0]*dim)
         self.dt = dt
-        self.tc = tc
+        self.fc = fc
         self.K = K
     def reset(self):
         self.x = 0
     def filter(self, signal):
-        self.x = (1-self.dt/self.tc)*self.x + self.K*self.dt/self.tc * signal
+        # signal should be a numpy array
+        self.x = (1-self.dt*self.fc)*self.x + self.K*self.dt*self.fc * signal
         return self.x
+
+class Integrator_Forward_Euler:
+    def __init__(self, dt, x0):
+        self.dt = dt
+        self.x = np.array(x0)
+    def integrate(self,xd):
+        #xd should be passed as NUMPY ARRAY
+        self.x = self.x + xd*self.dt
+        return self.x
+    def reset(self, x0):
+        self.x = np.array(x0)
 
 class Crawler:
 
-    def __init__(self, spine_segments, urdf_path="/home/fra/Uni/Tesi/crawler", base_position=[0,0,0.2], base_orientation=[0,0,0,1]):
+    def __init__(self, spine_segments, dt_simulation, urdf_path="/home/fra/Uni/Tesi/crawler", base_position=[0,0,0.2], base_orientation=[0,0,0,1]):
         self.scale=1
         #NOTE: Properties in this block of code must be manually matched to those defined in the Xacro file
         self.spine_segments         = spine_segments
@@ -54,8 +67,17 @@ class Crawler:
         self.mask_right_girdle = [6+self.num_joints-4, 6+self.num_joints-3]
         self.mask_left_girdle = [6+self.num_joints-2, 6+self.num_joints-1]
         #
-        self.low_pass = Discrete_Low_Pass(dt=1/240, tc=100, K=1)
+        self.dt_simulation=dt_simulation
+        self.low_pass_lateral = Discrete_Low_Pass(dim=len(self.mask_act),dt=self.dt_simulation, fc=50*self.dt_simulation, K=1)
+        self.integrator_lateral = Integrator_Forward_Euler(self.dt_simulation,[0]*len(self.mask_act))
         
+    def set_low_pass_lateral(self, fc, K=1):
+        self.low_pass_lateral = Discrete_Low_Pass(
+            dim=len(self.mask_act),
+            dt=self.dt_simulation, 
+            fc=fc*self.dt_simulation, 
+            K=K)
+            
 
     def COM_position_world(self):
     #return the position of the center of mass in the world coordinates, as a NUMPY ARRAY
@@ -89,7 +111,7 @@ class Crawler:
     def generate_control_indices(self):
     #this function relies on knowledge of the order of the joints in the crawler model
     #if the URDF is modified in ways different than just amodeldding more segments to the spine this function should be updated properly
-        lat_joints_i = tuple(range(1,(self.num_joints-4),2))
+        lat_joints_i = tuple(range(0,(self.num_joints-4),2))
         r_girdle_abd_i = self.num_joints-4
         r_girdle_flex_i = self.num_joints-3
         l_girdle_abd_i = self.num_joints-2
@@ -227,7 +249,7 @@ class Crawler:
         return JM_t
 
 
-    def solve_null_COM_y_speed(self, K=1, k0=0.001):
+    def solve_null_COM_y_speed(self, K, k0=100):
         #Return the desired joint speeds of the spinal lateral joints to be used for velocity control
         #NOTE: since the dorsal joints of the spine and the DOFs of the base are not actuated, xd_desired 
             # is corrected (see report). Joints of the girdles are also not considered as actuated since their 
@@ -239,24 +261,24 @@ class Crawler:
             # given by inverse kinematics.
             # H(q) minimum is found through gradient descent, by chosing q0d=-k0*gradient(H(q)) (easy for quadratic H(q))
         #NOTE: refer to the notation in the report
-        mask_base = [0,1,2,3,4,5]
-        mask_act = list(np.arange(6, 6+self.num_joints-4,2))
-        mask_nact = list(np.arange(7, 6+self.num_joints-4,2))+list(range(6+self.num_joints-4,6+self.num_joints))
+        # mask_base = [0,1,2,3,4,5]
+        # mask_act = list(np.arange(7, 6+self.num_joints-4,2))
+        # mask_nact = list(np.arange(6, 6+self.num_joints-4,2))+list(range(6+self.num_joints-4,6+self.num_joints))
         ###
         bd = np.array(p.getBaseVelocity(self.Id)[1] + p.getBaseVelocity(self.Id)[0]) #(angular velocity, linear velocity)
         bd = np.reshape(bd,(bd.shape[0],1))
         qd = np.asarray(p.getBaseVelocity(self.Id)[1] + p.getBaseVelocity(self.Id)[0] + self.get_joints_speeds_tuple())
         qd = np.reshape(qd,(qd.shape[0],1))
-        qda = qd[mask_act]
-        qdn = qd[mask_nact]
+        qda = qd[self.mask_act]
+        qdn = qd[self.mask_nact]
         ###
         W = np.eye(qda.shape[0]) #weight matrix for the different joints ("how much should they try to minimize the cost of H(q)")
         Winv = lna.inv(W)
         Jy = self.COM_trn_jacobian()[1]
         Jy = np.reshape(Jy,(1,Jy.shape[0]))
-        Jyb = Jy[:,mask_base]
-        Jya = Jy[:,mask_act]
-        Jyn = Jy[:,mask_nact]
+        Jyb = Jy[:,self.mask_base]
+        Jya = Jy[:,self.mask_act]
+        Jyn = Jy[:,self.mask_nact]
         Jwr = Winv.dot(Jya.T).dot(lna.inv(Jya.dot(Winv.dot(Jya.T))))
         P = np.eye(qda.shape[0])-Jwr.dot(Jya)
         ###
@@ -271,20 +293,101 @@ class Crawler:
         #returned flattened as a NUMPY ARRAY (qda.shape,)
         return (qda, e)
 
-    def control_spine_lateral(self, K=1, fmax=0.1):
-        #for now it is able to keep a low error (order of 0.1 on the y speed of the COM)
+    def generate_fmax_array_lateral(self,fmax_last):
+        # Similar to self.generate_gain_matrix_lateral()
+        fmax_array = list()
+        half_spine_index = int(len(self.control_indices[0])/2)
+        end_spine_index = len(self.control_indices[0])
+        for i in range(1, half_spine_index+1):
+            fmax_array.append(fmax_last*i)
+        for i in range(half_spine_index,end_spine_index):
+            fmax_array.append(fmax_last*(end_spine_index-i))
+        return fmax_array
+
+    def controlV_spine_lateral(self, K, fmax, velocityGain=1, filtered=False):
+        #For now it is able to keep a low error (order of 0.1 on the y speed of the COM)
             # until it reachs the limits of the joints.
             # Performances are limited probably by the PD controller on single joints.
             # Best performances seem to be obtained with low value of fmax
+        # K should be generated with self.generate_gain_matrix_lateral()
         control = self.solve_null_COM_y_speed(K=K)
-        qd = control[0]
+        qda = control[0]
+        qd = qda
+        qdaf = self.low_pass_lateral.filter(qda)
+        if filtered:
+            qd = qdaf
         e = control[1]
-        qdf = list(map(self.low_pass.filter,qd))
+        #qdaf = list(map(self.low_pass.filter,qda)) !!!NO!!! there should be a separate filter for each component
         for index, joint_i in enumerate(self.control_indices[0]):
-            p.setJointMotorControl2(self.Id, joint_i, p.VELOCITY_CONTROL, targetVelocity=qdf[index],force=fmax)
+            p.setJointMotorControl2(
+                self.Id, 
+                joint_i, 
+                p.VELOCITY_CONTROL, 
+                targetVelocity=qd[index],
+                force=fmax[index],
+                velocityGain=velocityGain
+                )
         # e is a NUMPY ARRAY
-        return e
+        return (qda,qdaf,e)
     
+    def controlP_spine_lateral(self, K, fmax, positionGain=1, velocityGain=1, filtered=False):
+        ###
+        # NOTE: set correct initial value for the integrator before calling this function inside a for loop!!!
+        ###
+        #For now it is able to keep a low error (order of 0.1 on the y speed of the COM)
+            # until it reachs the limits of the joints.
+            # Performances are limited probably by the PD controller on single joints.
+            # Best performances seem to be obtained with low value of fmax
+        # K should be generated with self.generate_gain_matrix_lateral()
+        control = self.solve_null_COM_y_speed(K=K)
+        qda = control[0]
+        e = control[1]
+        if filtered:
+            qda = self.low_pass_lateral.filter(qda)
+        qa = self.integrator_lateral.integrate(qda)
+        #qdaf = list(map(self.low_pass.filter,qda))
+        for index, joint_i in enumerate(self.control_indices[0]):
+            p.setJointMotorControl2(
+                self.Id, 
+                joint_i, 
+                p.POSITION_CONTROL, 
+                targetPosition=qa[index],
+                force=fmax[index],
+                positionGain=positionGain,
+                velocityGain=velocityGain
+                )
+        # e is a NUMPY ARRAY
+        return (qda,qa,e)
+    
+    def control_stance_abduction(self, RL, theta0, thetaf, ti, t_stance, force=1, positionGain=1, velocityGain=0.5):
+        #ti = time from start of the stance phase, t_stance = total (desired) stance phase duration
+        #RL = 0 for right leg, 1 for left leg
+        RL=int(RL)
+        if (RL!=0 and RL!=1):
+            print("ERROR: RL must be either 0 or 1 (right or left stance)")
+            return
+        theta = (theta0+thetaf)/2 + (theta0-thetaf)*cos(pi*ti/t_stance)/2
+        p.setJointMotorControl2(self.Id, 
+            self.control_indices[1+RL*2],   #NOTE: must be modified if the leg is changed in the URDF!!!
+            p.POSITION_CONTROL,
+            targetPosition = theta,
+            force = force,
+            positionGain = positionGain,
+            velocityGain = velocityGain)
+        return
+    
+    # def generate_velocityGain_array_lateral(self, k_last):
+    #     # The gain is scaled linearly along the spine, with the maximum in the middle;
+    #         # the input k_last correspond to the minimum value of the gain (first and last joint)
+    #     k_array = list()
+    #     half_spine_index = int(len(self.control_indices[0])/2)
+    #     end_spine_index = len(self.control_indices[0])
+    #     for i in range(1, half_spine_index+1):
+    #         k_array.append(k_last*i)
+    #     for i in range(half_spine_index,end_spine_index):
+    #         k_array.append(k_last*(end_spine_index-i))
+    #     return k_array
+
     # def girdle_flexion_control(self, RL=(False,False), to_neutral=(True,True), angles=(0,0), fmax=0.1, Kp=1, Kd=0.1):
     #     if (not(RL[0]) and not(RL[1])):
     #         # equivalent of a NOR gate, if no joint need to be controlled avoid every computation and exit

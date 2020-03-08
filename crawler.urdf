@@ -107,21 +107,21 @@
       </geometry>
     </collision>
   </link>
-  <joint name="spine_dorsal_joint_1" type="revolute">
-    <origin rpy="-1.570795 0 0" xyz="-0.0625 0 0"/>
+  <joint name="spine_lateral_joint_1" type="revolute">
+    <origin rpy="0 0 0" xyz="-0.0625 0 0"/>
     <axis xyz="0 0 1"/>
     <parent link="girdle"/>
     <child link="spine_connection_1"/>
     <dynamics damping="0.01" friction="0.01"/>
-    <limit effort="30" lower="-0.39269875" upper="0.39269875" velocity="1.0"/>
+    <limit effort="30" lower="-1.04719666667" upper="1.04719666667" velocity="1.0"/>
   </joint>
-  <joint name="spine_lateral_joint_1" type="revolute">
-    <origin rpy="1.570795 0 0" xyz="0 0 0"/>
+  <joint name="spine_dorsal_joint_1" type="revolute">
+    <origin rpy="-1.570795 0 0" xyz="0 0 0"/>
     <axis xyz="0 0 1"/>
     <parent link="spine_connection_1"/>
     <child link="spine_link_1"/>
     <dynamics damping="0.01" friction="0.01"/>
-    <limit effort="30" lower="-1.04719666667" upper="1.04719666667" velocity="1.0"/>
+    <limit effort="30" lower="-0.39269875" upper="0.39269875" velocity="1.0"/>
   </joint>
   <link name="spine_connection_2">
     <inertial>
@@ -161,21 +161,21 @@
       </geometry>
     </collision>
   </link>
-  <joint name="spine_dorsal_joint_2" type="revolute">
-    <origin rpy="-1.570795 0 0" xyz="-0.125 0 0"/>
+  <joint name="spine_lateral_joint_2" type="revolute">
+    <origin rpy="1.570795 0 0" xyz="-0.125 0 0"/>
     <axis xyz="0 0 1"/>
     <parent link="spine_link_1"/>
     <child link="spine_connection_2"/>
     <dynamics damping="0.01" friction="0.01"/>
-    <limit effort="30" lower="-0.39269875" upper="0.39269875" velocity="1.0"/>
+    <limit effort="30" lower="-1.04719666667" upper="1.04719666667" velocity="1.0"/>
   </joint>
-  <joint name="spine_lateral_joint_2" type="revolute">
-    <origin rpy="1.570795 0 0" xyz="0 0 0"/>
+  <joint name="spine_dorsal_joint_2" type="revolute">
+    <origin rpy="-1.570795 0 0" xyz="0 0 0"/>
     <axis xyz="0 0 1"/>
     <parent link="spine_connection_2"/>
     <child link="spine_link_2"/>
     <dynamics damping="0.01" friction="0.01"/>
-    <limit effort="30" lower="-1.04719666667" upper="1.04719666667" velocity="1.0"/>
+    <limit effort="30" lower="-0.39269875" upper="0.39269875" velocity="1.0"/>
   </joint>
   <link name="spine_connection_3">
     <inertial>
@@ -215,21 +215,21 @@
       </geometry>
     </collision>
   </link>
-  <joint name="spine_dorsal_joint_3" type="revolute">
-    <origin rpy="-1.570795 0 0" xyz="-0.125 0 0"/>
+  <joint name="spine_lateral_joint_3" type="revolute">
+    <origin rpy="1.570795 0 0" xyz="-0.125 0 0"/>
     <axis xyz="0 0 1"/>
     <parent link="spine_link_2"/>
     <child link="spine_connection_3"/>
     <dynamics damping="0.01" friction="0.01"/>
-    <limit effort="30" lower="-0.39269875" upper="0.39269875" velocity="1.0"/>
+    <limit effort="30" lower="-1.04719666667" upper="1.04719666667" velocity="1.0"/>
   </joint>
-  <joint name="spine_lateral_joint_3" type="revolute">
-    <origin rpy="1.570795 0 0" xyz="0 0 0"/>
+  <joint name="spine_dorsal_joint_3" type="revolute">
+    <origin rpy="-1.570795 0 0" xyz="0 0 0"/>
     <axis xyz="0 0 1"/>
     <parent link="spine_connection_3"/>
     <child link="spine_link_3"/>
     <dynamics damping="0.01" friction="0.01"/>
-    <limit effort="30" lower="-1.04719666667" upper="1.04719666667" velocity="1.0"/>
+    <limit effort="30" lower="-0.39269875" upper="0.39269875" velocity="1.0"/>
   </joint>
   <link name="spine_connection_4">
     <inertial>
@@ -269,21 +269,21 @@
       </geometry>
     </collision>
   </link>
-  <joint name="spine_dorsal_joint_4" type="revolute">
-    <origin rpy="-1.570795 0 0" xyz="-0.125 0 0"/>
+  <joint name="spine_lateral_joint_4" type="revolute">
+    <origin rpy="1.570795 0 0" xyz="-0.125 0 0"/>
     <axis xyz="0 0 1"/>
     <parent link="spine_link_3"/>
     <child link="spine_connection_4"/>
     <dynamics damping="0.01" friction="0.01"/>
-    <limit effort="30" lower="-0.39269875" upper="0.39269875" velocity="1.0"/>
+    <limit effort="30" lower="-1.04719666667" upper="1.04719666667" velocity="1.0"/>
   </joint>
-  <joint name="spine_lateral_joint_4" type="revolute">
-    <origin rpy="1.570795 0 0" xyz="0 0 0"/>
+  <joint name="spine_dorsal_joint_4" type="revolute">
+    <origin rpy="-1.570795 0 0" xyz="0 0 0"/>
     <axis xyz="0 0 1"/>
     <parent link="spine_connection_4"/>
     <child link="spine_link_4"/>
     <dynamics damping="0.01" friction="0.01"/>
-    <limit effort="30" lower="-1.04719666667" upper="1.04719666667" velocity="1.0"/>
+    <limit effort="30" lower="-0.39269875" upper="0.39269875" velocity="1.0"/>
   </joint>
   <link name="spine_connection_5">
     <inertial>
@@ -323,21 +323,21 @@
       </geometry>
     </collision>
   </link>
-  <joint name="spine_dorsal_joint_5" type="revolute">
-    <origin rpy="-1.570795 0 0" xyz="-0.125 0 0"/>
+  <joint name="spine_lateral_joint_5" type="revolute">
+    <origin rpy="1.570795 0 0" xyz="-0.125 0 0"/>
     <axis xyz="0 0 1"/>
     <parent link="spine_link_4"/>
     <child link="spine_connection_5"/>
     <dynamics damping="0.01" friction="0.01"/>
-    <limit effort="30" lower="-0.39269875" upper="0.39269875" velocity="1.0"/>
+    <limit effort="30" lower="-1.04719666667" upper="1.04719666667" velocity="1.0"/>
   </joint>
-  <joint name="spine_lateral_joint_5" type="revolute">
-    <origin rpy="1.570795 0 0" xyz="0 0 0"/>
+  <joint name="spine_dorsal_joint_5" type="revolute">
+    <origin rpy="-1.570795 0 0" xyz="0 0 0"/>
     <axis xyz="0 0 1"/>
     <parent link="spine_connection_5"/>
     <child link="spine_link_5"/>
     <dynamics damping="0.01" friction="0.01"/>
-    <limit effort="30" lower="-1.04719666667" upper="1.04719666667" velocity="1.0"/>
+    <limit effort="30" lower="-0.39269875" upper="0.39269875" velocity="1.0"/>
   </joint>
   <link name="spine_connection_6">
     <inertial>
@@ -377,21 +377,21 @@
       </geometry>
     </collision>
   </link>
-  <joint name="spine_dorsal_joint_6" type="revolute">
-    <origin rpy="-1.570795 0 0" xyz="-0.125 0 0"/>
+  <joint name="spine_lateral_joint_6" type="revolute">
+    <origin rpy="1.570795 0 0" xyz="-0.125 0 0"/>
     <axis xyz="0 0 1"/>
     <parent link="spine_link_5"/>
     <child link="spine_connection_6"/>
     <dynamics damping="0.01" friction="0.01"/>
-    <limit effort="30" lower="-0.39269875" upper="0.39269875" velocity="1.0"/>
+    <limit effort="30" lower="-1.04719666667" upper="1.04719666667" velocity="1.0"/>
   </joint>
-  <joint name="spine_lateral_joint_6" type="revolute">
-    <origin rpy="1.570795 0 0" xyz="0 0 0"/>
+  <joint name="spine_dorsal_joint_6" type="revolute">
+    <origin rpy="-1.570795 0 0" xyz="0 0 0"/>
     <axis xyz="0 0 1"/>
     <parent link="spine_connection_6"/>
     <child link="spine_link_6"/>
     <dynamics damping="0.01" friction="0.01"/>
-    <limit effort="30" lower="-1.04719666667" upper="1.04719666667" velocity="1.0"/>
+    <limit effort="30" lower="-0.39269875" upper="0.39269875" velocity="1.0"/>
   </joint>
   <link name="spine_connection_7">
     <inertial>
@@ -431,21 +431,21 @@
       </geometry>
     </collision>
   </link>
-  <joint name="spine_dorsal_joint_7" type="revolute">
-    <origin rpy="-1.570795 0 0" xyz="-0.125 0 0"/>
+  <joint name="spine_lateral_joint_7" type="revolute">
+    <origin rpy="1.570795 0 0" xyz="-0.125 0 0"/>
     <axis xyz="0 0 1"/>
     <parent link="spine_link_6"/>
     <child link="spine_connection_7"/>
     <dynamics damping="0.01" friction="0.01"/>
-    <limit effort="30" lower="-0.39269875" upper="0.39269875" velocity="1.0"/>
+    <limit effort="30" lower="-1.04719666667" upper="1.04719666667" velocity="1.0"/>
   </joint>
-  <joint name="spine_lateral_joint_7" type="revolute">
-    <origin rpy="1.570795 0 0" xyz="0 0 0"/>
+  <joint name="spine_dorsal_joint_7" type="revolute">
+    <origin rpy="-1.570795 0 0" xyz="0 0 0"/>
     <axis xyz="0 0 1"/>
     <parent link="spine_connection_7"/>
     <child link="spine_link_7"/>
     <dynamics damping="0.01" friction="0.01"/>
-    <limit effort="30" lower="-1.04719666667" upper="1.04719666667" velocity="1.0"/>
+    <limit effort="30" lower="-0.39269875" upper="0.39269875" velocity="1.0"/>
   </joint>
   <link name="spine_connection_8">
     <inertial>
@@ -485,21 +485,21 @@
       </geometry>
     </collision>
   </link>
-  <joint name="spine_dorsal_joint_8" type="revolute">
-    <origin rpy="-1.570795 0 0" xyz="-0.125 0 0"/>
+  <joint name="spine_lateral_joint_8" type="revolute">
+    <origin rpy="1.570795 0 0" xyz="-0.125 0 0"/>
     <axis xyz="0 0 1"/>
     <parent link="spine_link_7"/>
     <child link="spine_connection_8"/>
     <dynamics damping="0.01" friction="0.01"/>
-    <limit effort="30" lower="-0.39269875" upper="0.39269875" velocity="1.0"/>
+    <limit effort="30" lower="-1.04719666667" upper="1.04719666667" velocity="1.0"/>
   </joint>
-  <joint name="spine_lateral_joint_8" type="revolute">
-    <origin rpy="1.570795 0 0" xyz="0 0 0"/>
+  <joint name="spine_dorsal_joint_8" type="revolute">
+    <origin rpy="-1.570795 0 0" xyz="0 0 0"/>
     <axis xyz="0 0 1"/>
     <parent link="spine_connection_8"/>
     <child link="spine_link_8"/>
     <dynamics damping="0.01" friction="0.01"/>
-    <limit effort="30" lower="-1.04719666667" upper="1.04719666667" velocity="1.0"/>
+    <limit effort="30" lower="-0.39269875" upper="0.39269875" velocity="1.0"/>
   </joint>
   <link name="right_girdle_connection_1">
     <inertial>
@@ -508,7 +508,7 @@
       <inertia ixx="1.92901234568e-08" ixy="0" ixz="0" iyy="1.92901234568e-08" iyz="0" izz="1.92901234568e-08"/>
     </inertial>
   </link>
-  <!--NOTE: currently leg joints have symmetrical limits, to avoid problem deriving from having symmetrical reference frame-->
+  <!--NOTE: currently leg joints have symmetrical limits, to avoid problems deriving from having reflected reference frames-->
   <joint name="right_girdle_abduction_joint" type="revolute">
     <origin rpy="0 0 -1.570795" xyz="0 -0.0625 0"/>
     <axis xyz="0 0 1"/>
@@ -548,7 +548,7 @@
       </geometry>
     </collision>
   </link>
-  <!--NOTE: currently leg joints have symmetrical limits, to avoid problem deriving from having symmetrical reference frame-->
+  <!--NOTE: currently leg joints have symmetrical limits, to avoid problems deriving from having reflected reference frames-->
   <joint name="right_girdle_flection_joint" type="revolute">
     <origin rpy="-1.570795 0 0" xyz="0 0 0"/>
     <axis xyz="0 0 1"/>
@@ -564,7 +564,7 @@
       <inertia ixx="1.92901234568e-08" ixy="0" ixz="0" iyy="1.92901234568e-08" iyz="0" izz="1.92901234568e-08"/>
     </inertial>
   </link>
-  <!--NOTE: currently leg joints have symmetrical limits, to avoid problem deriving from having symmetrical reference frame-->
+  <!--NOTE: currently leg joints have symmetrical limits, to avoid problems deriving from having reflected reference frames-->
   <joint name="left_girdle_abduction_joint" type="revolute">
     <origin rpy="0 0 1.570795" xyz="0 0.0625 0"/>
     <axis xyz="0 0 1"/>
@@ -604,7 +604,7 @@
       </geometry>
     </collision>
   </link>
-  <!--NOTE: currently leg joints have symmetrical limits, to avoid problem deriving from having symmetrical reference frame-->
+  <!--NOTE: currently leg joints have symmetrical limits, to avoid problems deriving from having reflected reference frames-->
   <joint name="left_girdle_flection_joint" type="revolute">
     <origin rpy="1.570795 0 0" xyz="0 0 0"/>
     <axis xyz="0 0 1"/>
