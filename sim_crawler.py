@@ -108,17 +108,17 @@ for tau in range (steps):
         velocityGain=0.01
         )
     ### control spine's lateral joints
-    output_lateral = model.controlV_spine_lateral(
-        K=50,
-        fmax=fmax_lateral,
-        #positionGain=1,
-        velocityGain=0.005,
-        filtered=True)
+    # output_lateral = model.controlV_spine_lateral(
+    #     K=50,
+    #     fmax=fmax_lateral,
+    #     #positionGain=1,
+    #     velocityGain=0.005,
+    #     filtered=True)
     #print("e = ", np.round(output_lateral[2],5))
-    qda3.append(output_lateral[0][3])
-    qdaf3.append(output_lateral[1][3])
-    e=np.append(e,output_lateral[2])
-    # show COM trajectory
+    # qda3.append(output_lateral[0][3])
+    # qdaf3.append(output_lateral[1][3])
+    # e=np.append(e,output_lateral[2])
+    # # show COM trajectory
     COM_curr = model.COM_position_world()
     p.addUserDebugLine(COM_prev.tolist(), COM_curr.tolist(), lineColorRGB=[sin(4*pi*t),sin(4*pi*(t+0.33)),sin(4*pi*(t+0.67))],lineWidth=3, lifeTime=2)
     #

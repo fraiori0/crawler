@@ -44,35 +44,16 @@
 
 <!--########### COLORS used for the links ###########-->
 <!--colors are currently implemented as macro because just defining them, as shown in the ROS tutorial, seems not to work-->
-  <xacro:macro name="girdle_material">
-    <material name="girdle_material">
-      <color rgba="0.878 0.471 0.333 0.1"/>
-    </material>
-  </xacro:macro>
-  <!--<xacro:macro name="girdle_material">
-    <material name="red">
-      <color rgba="1 0 0 0.5"/>
-    </material>
-  </xacro:macro>-->
-
-  <xacro:macro name="body_material">
-    <material name="body_material">
-      <color rgba="0.176 0.188 0.278 1.0"/>
-    </material>
-  </xacro:macro>
   
-  <xacro:macro name="leg_material">
-    <material name="leg_material">
-      <color rgba="0.106 0.6 0.545 1.0"/>
-    </material>
-  </xacro:macro>
-
-  <xacro:macro name="visual_box_material">
-    <material name="visual_box_material">
-      <color rgba="0.627 0.620 0.733 1.0"/>
-    </material>
-  </xacro:macro>
-
+  <material name="girdle_material">
+    <color rgba="0.106 0.6 0.545 1"/>
+  </material>
+  <material name="body_material">
+    <color rgba="1 0.8235 0.298 1"/>
+  </material>
+  <material name="leg_material">
+    <color rgba="0.878 0.471 0.333 1"/>    
+  </material>
 
 <!--########### MACRO for links and joints ###########-->
 
@@ -95,14 +76,13 @@
         <geometry>
           <sphere radius="${BODY_SPHERE_RADIUS}" />
         </geometry>
-        <xacro:body_material/>
+        <material name="body_material"/>
       </visual>
       <visual>
         <origin xyz="${-SPINE_SEGMENT_LENGTH/2} 0 0" rpy="0 0 0"/>
         <geometry>
           <box size="${SPINE_SEGMENT_LENGTH} ${VISUAL_BOX_RATIO*SPINE_SEGMENT_LENGTH} ${VISUAL_BOX_RATIO*GIRDLE_WIDTH}"/>
         </geometry>
-        <xacro:visual_box_material/>
       </visual>
       <collision>
         <origin xyz="${-SPINE_SEGMENT_LENGTH} 0 0" rpy="0 0 0"/>
@@ -157,14 +137,13 @@
         <geometry>
           <sphere radius="${LEG_TIP_RADIUS}" />
         </geometry>
-        <xacro:leg_material/>
+        <material name="leg_material"/>
       </visual>
       <visual>
         <origin xyz="${LEG_LENGTH/2} 0 0" rpy="0 0 0"/>
         <geometry>
           <box size="${LEG_LENGTH} ${VISUAL_BOX_RATIO*LEG_LENGTH} ${VISUAL_BOX_RATIO*LEG_LENGTH}" />
         </geometry>
-        <xacro:visual_box_material/>
       </visual>
       <collision>
         <origin xyz="${LEG_LENGTH} 0 0" rpy="0 0 0"/>
@@ -207,28 +186,25 @@
      <geometry>
        <sphere radius="${BODY_SPHERE_RADIUS}" />
      </geometry>
-     <xacro:girdle_material/>
+     <material name="girdle_material"/>
    </visual>
    <visual>
      <origin xyz="${-GIRDLE_LENGTH} 0 0" rpy="0 0 0"/>
      <geometry>
        <sphere radius="${BODY_SPHERE_RADIUS}" />
      </geometry>
-     <xacro:girdle_material/>
    </visual>
    <visual>
      <origin xyz="0 0 0" rpy="0 0 0"/>
      <geometry>
        <box size="${VISUAL_BOX_RATIO*2*GIRDLE_WIDTH} ${2*GIRDLE_WIDTH} ${VISUAL_BOX_RATIO*2*GIRDLE_WIDTH}"/>
      </geometry>
-     <xacro:visual_box_material/>
    </visual>
    <visual>
      <origin xyz="0 0 0" rpy="0 0 0"/>
      <geometry>
        <box size="${2*GIRDLE_LENGTH} ${VISUAL_BOX_RATIO*2*GIRDLE_LENGTH} ${VISUAL_BOX_RATIO*2*GIRDLE_WIDTH}"/>
      </geometry>
-     <xacro:visual_box_material/>
    </visual>
    <collision>
      <origin xyz="${GIRDLE_LENGTH} 0 0" rpy="0 0 0"/>
@@ -262,14 +238,13 @@
       <geometry>
         <sphere radius="${BODY_SPHERE_RADIUS}" />
       </geometry>
-      <xacro:body_material/>
+      <material name="body_material"/>
     </visual>
     <visual>
       <origin xyz="${-SPINE_SEGMENT_LENGTH/2} 0 0" rpy="0 0 0"/>
       <geometry>
         <box size="${SPINE_SEGMENT_LENGTH} ${VISUAL_BOX_RATIO*SPINE_SEGMENT_LENGTH} ${VISUAL_BOX_RATIO*GIRDLE_WIDTH}"/>
       </geometry>
-      <xacro:visual_box_material/>
     </visual>
     <collision>
       <origin xyz="${-SPINE_SEGMENT_LENGTH} 0 0" rpy="0 0 0"/>
