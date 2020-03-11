@@ -60,6 +60,8 @@ class Crawler:
         self.links_state_array=[0]*self.num_joints
         self.set_links_state_array()
         #
+        self.COM_y_0 = self.COM_position_world()[1]
+        #
         self.mask_base = [0,1,2,3,4,5]
         self.mask_joints = list(range(6,6+self.num_joints))
         self.mask_act = list(np.arange(6, 6+self.num_joints-4,2))
@@ -78,7 +80,6 @@ class Crawler:
             fc=fc*self.dt_simulation, 
             K=K)
             
-
     def COM_position_world(self):
     #return the position of the center of mass in the world coordinates, as a NUMPY ARRAY
         COM = np.asarray(p.getBasePositionAndOrientation(self.Id)[0])*(p.getDynamicsInfo(self.Id, -1)[0])
@@ -98,6 +99,10 @@ class Crawler:
             COMv += link_COM_vel*link_mass
         COMv = (COMv/self.mass)
         return COMv
+
+    def set_COM_y_0(self):
+        self.COM_y_pos = self.COM_position_world()[1]
+        return
 
     def turn_off_joint(self, joint_index):
         p.setJointMotorControl2(self.Id, joint_index, controlMode=p.VELOCITY_CONTROL, force=0)
@@ -248,7 +253,6 @@ class Crawler:
         #returned as NUMPY ARRAY
         return JM_t
 
-
     def solve_null_COM_y_speed(self, K, k0=100):
         #Return the desired joint speeds of the spinal lateral joints to be used for velocity control
         #NOTE: since the dorsal joints of the spine and the DOFs of the base are not actuated, xd_desired 
@@ -261,9 +265,6 @@ class Crawler:
             # given by inverse kinematics.
             # H(q) minimum is found through gradient descent, by chosing q0d=-k0*gradient(H(q)) (easy for quadratic H(q))
         #NOTE: refer to the notation in the report
-        # mask_base = [0,1,2,3,4,5]
-        # mask_act = list(np.arange(7, 6+self.num_joints-4,2))
-        # mask_nact = list(np.arange(6, 6+self.num_joints-4,2))+list(range(6+self.num_joints-4,6+self.num_joints))
         ###
         bd = np.array(p.getBaseVelocity(self.Id)[1] + p.getBaseVelocity(self.Id)[0]) #(angular velocity, linear velocity)
         bd = np.reshape(bd,(bd.shape[0],1))
@@ -287,7 +288,7 @@ class Crawler:
         xd_desired = 0 - Jyb.dot(bd) - Jyn.dot(qdn)
         #COM_vy = Jy.dot(qd)
         COM_vy = self.COM_velocity_world()[1]
-        e = xd_desired-COM_vy
+        e = self.COM_y_pos-self.COM_position_world()[1]
         ###
         qda = np.ndarray.flatten(Jwr.dot(xd_desired + K*e) + P.dot(q0da))
         #returned flattened as a NUMPY ARRAY (qda.shape,)
