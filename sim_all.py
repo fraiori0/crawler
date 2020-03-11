@@ -11,7 +11,7 @@ matplotlib.use('TkAgg')
 
 class Crawler:
 
-    def __init__(self, spine_segments, urdf_path="/home/fra/Uni/Tesi/crawler", base_position=[0,0,0.2], base_orientation=[0,0,0,1]):
+    def __init__(self, spine_segments, urdf_path="/home/iori/Documents/Francesco_Iori_Thesis/crawler", base_position=[0,0,0.2], base_orientation=[0,0,0,1]):
         self.scale=1
         #NOTE: Properties in this block of code must be manually matched to those defined in the Xacro file
         self.spine_segments         = spine_segments

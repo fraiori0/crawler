@@ -20,7 +20,7 @@ physicsClient = p.connect(p.GUI)
 p.setAdditionalSearchPath(pybullet_data.getDataPath())
 p.setGravity(0,0,-9.81)
 planeID = p.loadURDF("plane100.urdf", [0,0,0])
-model = crw.Crawler(spine_segments=8,dt_simulation=dt, base_position=[0,0,0.05], base_orientation=[0,0,0,1])
+model = crw.Crawler(urdf_path="/home/iori/Documents/Francesco_Iori_Thesis/crawler",spine_segments=8,dt_simulation=dt, base_position=[0,0,0.05], base_orientation=[0,0,0,1])
 np.random.seed()
 ### plane set-up
 p.changeDynamics(planeID,
@@ -91,6 +91,7 @@ qdaf3=list()
 e = np.array([0])
 model.integrator_lateral.reset(np.array([0]*len(model.control_indices[0])))
 model.set_low_pass_lateral(fc=5000)
+model.set_COM_y_0()
 for tau in range (steps):
     p.stepSimulation()
     ti += dt
@@ -108,16 +109,16 @@ for tau in range (steps):
         velocityGain=0.01
         )
     ### control spine's lateral joints
-    # output_lateral = model.controlV_spine_lateral(
-    #     K=50,
-    #     fmax=fmax_lateral,
-    #     #positionGain=1,
-    #     velocityGain=0.005,
-    #     filtered=True)
-    #print("e = ", np.round(output_lateral[2],5))
-    # qda3.append(output_lateral[0][3])
-    # qdaf3.append(output_lateral[1][3])
-    # e=np.append(e,output_lateral[2])
+    output_lateral = model.controlV_spine_lateral(
+        K=50,
+        fmax=fmax_lateral,
+        #positionGain=1,
+        velocityGain=0.04,
+        filtered=True)
+    print("e = ", np.round(output_lateral[2],5))
+    qda3.append(output_lateral[0][3])
+    qdaf3.append(output_lateral[1][3])
+    e=np.append(e,output_lateral[2])
     # # show COM trajectory
     COM_curr = model.COM_position_world()
     p.addUserDebugLine(COM_prev.tolist(), COM_curr.tolist(), lineColorRGB=[sin(4*pi*t),sin(4*pi*(t+0.33)),sin(4*pi*(t+0.67))],lineWidth=3, lifeTime=2)
@@ -138,6 +139,8 @@ for tau in range (steps):
 #         -np.asarray(p.getBasePositionAndOrientation(model.Id)[0])))
 #     model.test_link_COM_jacobians(i)
 #     print("\n")
+
+
 fig, ax = plt.subplots()
 plt.plot(qda3,"b")
 plt.plot(qdaf3,"r")

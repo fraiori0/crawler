@@ -60,7 +60,7 @@ class Crawler:
         self.links_state_array=[0]*self.num_joints
         self.set_links_state_array()
         #
-        self.COM_y_0 = self.COM_position_world()[1]
+        self.COM_y_0=self.COM_position_world()[1]
         #
         self.mask_base = [0,1,2,3,4,5]
         self.mask_joints = list(range(6,6+self.num_joints))
@@ -101,7 +101,7 @@ class Crawler:
         return COMv
 
     def set_COM_y_0(self):
-        self.COM_y_pos = self.COM_position_world()[1]
+        self.COM_y_0 = self.COM_position_world()[1]
         return
 
     def turn_off_joint(self, joint_index):
@@ -255,11 +255,12 @@ class Crawler:
 
     def solve_null_COM_y_speed(self, K, k0=100):
         #Return the desired joint speeds of the spinal lateral joints to be used for velocity control
+        #NOTE: self.COM_y_0 should be set once at the start of each step phase
         #NOTE: since the dorsal joints of the spine and the DOFs of the base are not actuated, xd_desired 
             # is corrected (see report). Joints of the girdles are also not considered as actuated since their 
             # speed is set independently
         #Use constrained (convex) optimization to solve inverse kinematic, coupled with closed loop inverse kinematic
-            #to make the error converge esponentially
+            #to (try to) make the error converge esponentially
         #q0d are projected inside the nullspace of the Jacobian (J) and can be chosen to minimize a cost function
             # Chosen cost function is H(q)=sum(q_i ^2), to keep joints as near to 0 as possible while respecting the requirements
             # given by inverse kinematics.
@@ -288,7 +289,7 @@ class Crawler:
         xd_desired = 0 - Jyb.dot(bd) - Jyn.dot(qdn)
         #COM_vy = Jy.dot(qd)
         COM_vy = self.COM_velocity_world()[1]
-        e = self.COM_y_pos-self.COM_position_world()[1]
+        e = self.COM_y_0-self.COM_position_world()[1]
         ###
         qda = np.ndarray.flatten(Jwr.dot(xd_desired + K*e) + P.dot(q0da))
         #returned flattened as a NUMPY ARRAY (qda.shape,)
@@ -311,6 +312,7 @@ class Crawler:
             # Performances are limited probably by the PD controller on single joints.
             # Best performances seem to be obtained with low value of fmax
         # K should be generated with self.generate_gain_matrix_lateral()
+        #NOTE: self.COM_y_0 should be set once at the start of each step phase, since it's used to compute the error
         control = self.solve_null_COM_y_speed(K=K)
         qda = control[0]
         qd = qda
