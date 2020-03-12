@@ -9,14 +9,17 @@ from math import *
 class Discrete_Low_Pass:
     def __init__(self, dim, dt, fc, K=1):
         #fc is the cut-off frequency
-        self.x = np.array([0]*dim)
+        #since each filter keeps a internal state, a different filter should 
+            # be intialized for each signal to filter
+        self.dim = dim
+        self.x = np.array([0]*self.dim)
         self.dt = dt
         self.fc = fc
         self.K = K
     def reset(self):
-        self.x = 0
+        self.x = np.array([0]*self.dim)
     def filter(self, signal):
-        # signal should be a numpy array
+        # input signal should be a NUMPY ARRAY
         self.x = (1-self.dt*self.fc)*self.x + self.K*self.dt*self.fc * signal
         return self.x
 
@@ -33,11 +36,11 @@ class Integrator_Forward_Euler:
 
 class Crawler:
 
-    def __init__(self, spine_segments, dt_simulation, urdf_path="/home/fra/Uni/Tesi/crawler", base_position=[0,0,0.2], base_orientation=[0,0,0,1]):
+    def __init__(self, dt_simulation, urdf_path="/home/fra/Uni/Tesi/crawler", base_position=[0,0,0.2], base_orientation=[0,0,0,1]):
         self.scale=1
         #NOTE: Properties in this block of code must be manually matched to those defined in the Xacro file
-        self.spine_segments         = spine_segments
-        self.body_length            = self.scale * 1
+        self.spine_segments         = 4
+        self.body_length            = self.scale * 0.5
         self.spine_segment_length   = self.scale * self.body_length/self.spine_segments
         self.leg_length             = self.scale * self.body_length/8
         self.body_sphere_radius     = self.scale * self.spine_segment_length/2
@@ -253,7 +256,7 @@ class Crawler:
         #returned as NUMPY ARRAY
         return JM_t
 
-    def solve_null_COM_y_speed(self, K, k0=100):
+    def solve_null_COM_y_speed_optimization(self, K, k0=1):
         #Return the desired joint speeds of the spinal lateral joints to be used for velocity control
         #NOTE: self.COM_y_0 should be set once at the start of each step phase
         #NOTE: since the dorsal joints of the spine and the DOFs of the base are not actuated, xd_desired 
@@ -288,10 +291,15 @@ class Crawler:
         ###
         xd_desired = 0 - Jyb.dot(bd) - Jyn.dot(qdn)
         #COM_vy = Jy.dot(qd)
-        COM_vy = self.COM_velocity_world()[1]
         e = self.COM_y_0-self.COM_position_world()[1]
         ###
         qda = np.ndarray.flatten(Jwr.dot(xd_desired + K*e) + P.dot(q0da))
+        # print("xd_desired = ", xd_desired)
+        # print("base linear v = ", p.getBaseVelocity(self.Id)[0])
+        # print("base angular v = ", p.getBaseVelocity(self.Id)[1])
+        # print("qdn", np.ndarray.flatten(qdn))
+        # print("Jyb.dot(bd) = ", Jyb.dot(bd))
+        # print("Jyn.dot(qdn)", Jyn.dot(qdn))
         #returned flattened as a NUMPY ARRAY (qda.shape,)
         return (qda, e)
 
@@ -306,14 +314,14 @@ class Crawler:
             fmax_array.append(fmax_last*(end_spine_index-i))
         return fmax_array
 
-    def controlV_spine_lateral(self, K, fmax, velocityGain=1, filtered=False):
+    def controlV_spine_lateral(self, K, fmax, k0=1, velocityGain=0.01, filtered=False):
         #For now it is able to keep a low error (order of 0.1 on the y speed of the COM)
             # until it reachs the limits of the joints.
             # Performances are limited probably by the PD controller on single joints.
             # Best performances seem to be obtained with low value of fmax
         # K should be generated with self.generate_gain_matrix_lateral()
         #NOTE: self.COM_y_0 should be set once at the start of each step phase, since it's used to compute the error
-        control = self.solve_null_COM_y_speed(K=K)
+        control = self.solve_null_COM_y_speed_optimization(K=K,k0=k0)
         qda = control[0]
         qd = qda
         qdaf = self.low_pass_lateral.filter(qda)
@@ -342,7 +350,7 @@ class Crawler:
             # Performances are limited probably by the PD controller on single joints.
             # Best performances seem to be obtained with low value of fmax
         # K should be generated with self.generate_gain_matrix_lateral()
-        control = self.solve_null_COM_y_speed(K=K)
+        control = self.solve_null_COM_y_speed_optimization(K=K)
         qda = control[0]
         e = control[1]
         if filtered:
@@ -362,7 +370,7 @@ class Crawler:
         # e is a NUMPY ARRAY
         return (qda,qa,e)
     
-    def control_stance_abduction(self, RL, theta0, thetaf, ti, t_stance, force=1, positionGain=1, velocityGain=0.5):
+    def control_leg_abduction(self, RL, theta0, thetaf, ti, t_stance, force=1, positionGain=1, velocityGain=0.5):
         #ti = time from start of the stance phase, t_stance = total (desired) stance phase duration
         #RL = 0 for right leg, 1 for left leg
         RL=int(RL)

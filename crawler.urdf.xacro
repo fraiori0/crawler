@@ -8,10 +8,10 @@
   <!--CONSTANTS-->
   <xacro:property name="PI" value="3.14159" />
 
-  <xacro:property name="BODY_LENGTH" value="1"/>
+  <xacro:property name="BODY_LENGTH" value="0.5"/>
   <xacro:property name="BODY_MASS" value="1"/>
 
-  <xacro:property name="SPINE_SEGMENTS_NUMBER" value="8" />
+  <xacro:property name="SPINE_SEGMENTS_NUMBER" value="4" />
 
   <xacro:property name="SPINE_SEGMENT_LENGTH" value="${BODY_LENGTH/SPINE_SEGMENTS_NUMBER}" />
   <xacro:property name="SPINE_DORSAL_BENDING_LIMIT" value="${PI/8}" />
