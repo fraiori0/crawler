@@ -39,8 +39,8 @@ class Crawler:
     def __init__(self, dt_simulation, urdf_path="/home/fra/Uni/Tesi/crawler", base_position=[0,0,0.2], base_orientation=[0,0,0,1]):
         self.scale=1
         #NOTE: Properties in this block of code must be manually matched to those defined in the Xacro file
-        self.spine_segments         = 4
-        self.body_length            = self.scale * 0.5
+        self.spine_segments         = 8
+        self.body_length            = self.scale * 1
         self.spine_segment_length   = self.scale * self.body_length/self.spine_segments
         self.leg_length             = self.scale * self.body_length/8
         self.body_sphere_radius     = self.scale * self.spine_segment_length/2
@@ -126,25 +126,25 @@ class Crawler:
         l_girdle_flex_i = self.num_joints-1
         return (lat_joints_i,r_girdle_abd_i,r_girdle_flex_i,l_girdle_abd_i,l_girdle_flex_i)
 
-    def fix_right_foot(self, leg_index=17):
+    def fix_right_foot(self):
         #constraint is generated at the origin of the center of mass of the leg, i.e. at center of the spherical "foot"
         if self.constraints["right_foot"]:
             constId=self.constraints["right_foot"]
             print("Error: remove right foot constraint before setting a new one")
         else:
-            constId = p.createConstraint(self.Id, leg_index, -1,-1, p.JOINT_POINT2POINT, jointAxis=[0, 0, 0],
-                parentFramePosition=[0, 0, 0], childFramePosition=list(p.getLinkState(self.Id,leg_index)[0]))
+            constId = p.createConstraint(self.Id, self.control_indices[2], -1,-1, p.JOINT_POINT2POINT, jointAxis=[0, 0, 0],
+                parentFramePosition=[0, 0, 0], childFramePosition=list(p.getLinkState(self.Id,self.control_indices[2])[0]))
             self.constraints["right_foot"]=constId
         return constId
 
-    def fix_left_foot(self, leg_index=19):
+    def fix_left_foot(self):
         #constraint is generated at the origin of the center of mass of the leg, i.e. at center of the spherical "foot"
         if self.constraints["left_foot"]:
             constId=self.constraints["left_foot"]
             print("Error: remove left foot constraint before setting a new one")
         else:
-            constId = p.createConstraint(self.Id, leg_index, -1,-1, p.JOINT_POINT2POINT, jointAxis=[0, 0, 0],
-                parentFramePosition=[0, 0, 0], childFramePosition=list(p.getLinkState(self.Id,leg_index)[0]))
+            constId = p.createConstraint(self.Id, self.control_indices[4], -1,-1, p.JOINT_POINT2POINT, jointAxis=[0, 0, 0],
+                parentFramePosition=[0, 0, 0], childFramePosition=list(p.getLinkState(self.Id,self.control_indices[4])[0]))
             self.constraints["left_foot"]=constId
         return constId
     
@@ -302,6 +302,10 @@ class Crawler:
         # print("Jyn.dot(qdn)", Jyn.dot(qdn))
         #returned flattened as a NUMPY ARRAY (qda.shape,)
         return (qda, e)
+    
+    def solve_torques_lateral(self, qdda):
+
+        return
 
     def generate_fmax_array_lateral(self,fmax_last):
         # Similar to self.generate_gain_matrix_lateral()

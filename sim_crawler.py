@@ -19,7 +19,7 @@ physicsClient = p.connect(p.GUI)
 p.setAdditionalSearchPath(pybullet_data.getDataPath())
 p.setGravity(0,0,-9.81)
 planeID = p.loadURDF("plane100.urdf", [0,0,0])
-model = crw.Crawler(urdf_path="/home/iori/Documents/Francesco_Iori_Thesis/crawler", dt_simulation=dt, base_position=[0,0,0.05], base_orientation=[0,0,0,1])
+model = crw.Crawler(urdf_path="/home/fra/Uni/Tesi/crawler", dt_simulation=dt, base_position=[0,0,0.05], base_orientation=[0,0,0,1])
 np.random.seed()
 ### plane set-up
 p.changeDynamics(planeID,
@@ -69,10 +69,10 @@ vGain_leg = 0.05
 fmax_lateral = model.generate_fmax_array_lateral(100)
 K_lateral = 180
 k0_lateral = 100
-vGain_lateral = 1
+vGain_lateral = 0.8
 ### joints' starting position and limit for the stance phase
-theta_g0 = pi/5
-theta_gf = -pi/5
+theta_g0 = pi/8
+theta_gf = -pi/8
 for i in range(0,model.num_joints):
     p.resetJointState(model.Id, i, 0.0, 0.0)
 p.resetJointState(model.Id, model.control_indices[1], theta_g0,0.0)
@@ -101,6 +101,9 @@ e = np.array([0])
 joints_pos = [0]*len(model.control_indices[0])
 joints_speeds = [0]*len(model.control_indices[0])
 joints_torques = [0]*len(model.control_indices[0])
+for i in range (1200):
+    p.stepSimulation()
+    time.sleep(dt)
 ###
 for tau in range (steps):
     COM_prev = model.COM_position_world()

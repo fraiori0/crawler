@@ -5,35 +5,42 @@ import pybullet as p
 from math import *
 import crawler
 
-dt = 1/240
-low_pass = crawler.Discrete_Low_Pass(dim=3,dt=dt,tc=1/10,K=1)
-original_signal = np.array([0,0,0])
-original_signal = np.reshape(original_signal,(1,original_signal.shape[0]))
-filtered_signal = np.array([0,0,0])
-filtered_signal = np.reshape(filtered_signal,(1,filtered_signal.shape[0]))
+physicsClient = p.connect(p.GUI)
+model = crawler.Crawler(dt_simulation=1/240)
+print(model.control_indices)
+print(p.getLinkState(model.Id,model.control_indices[2])[0])
+p.disconnect()
 
-for t in np.arange(0,10,1/240) : 
-    s1 = 4*np.sin(pi*1 * t)# + 5*np.sin(0.01 * t)
-    s2 = 4*np.sin(10 * t)# + 5*np.sin(0.01 * t)
-    s3 = 1 + 4*np.sin(pi*1000 * t)# + 5*np.sin(0.01 * t)
-    s = np.array((s1,s2,s3))
-    sf = low_pass.filter(s)
-    s=np.reshape(s,(1,s.shape[0]))
-    sf=np.reshape(sf,(1,sf.shape[0]))
-    original_signal= np.concatenate((original_signal,s))
-    filtered_signal= np.concatenate((filtered_signal,sf))
 
-fig, axes = plt.subplots(nrows=1,ncols=3)
-axes[0].plot(original_signal[:,0], 'r+')
-axes[0].plot(filtered_signal[:,0], 'ro')
-axes[1].plot(original_signal[:,1], 'g+')
-axes[1].plot(filtered_signal[:,1], 'go')
-axes[2].plot(original_signal[:,2], 'b+')
-axes[2].plot(filtered_signal[:,2], 'bo')
-plt.show(fig)
+# dt = 1/240
+# low_pass = crawler.Discrete_Low_Pass(dim=3,dt=dt,tc=1/10,K=1)
+# original_signal = np.array([0,0,0])
+# original_signal = np.reshape(original_signal,(1,original_signal.shape[0]))
+# filtered_signal = np.array([0,0,0])
+# filtered_signal = np.reshape(filtered_signal,(1,filtered_signal.shape[0]))
+
+# for t in np.arange(0,10,1/240) : 
+#     s1 = 4*np.sin(pi*1 * t)# + 5*np.sin(0.01 * t)
+#     s2 = 4*np.sin(10 * t)# + 5*np.sin(0.01 * t)
+#     s3 = 1 + 4*np.sin(pi*1000 * t)# + 5*np.sin(0.01 * t)
+#     s = np.array((s1,s2,s3))
+#     sf = low_pass.filter(s)
+#     s=np.reshape(s,(1,s.shape[0]))
+#     sf=np.reshape(sf,(1,sf.shape[0]))
+#     original_signal= np.concatenate((original_signal,s))
+#     filtered_signal= np.concatenate((filtered_signal,sf))
+
+# fig, axes = plt.subplots(nrows=1,ncols=3)
+# axes[0].plot(original_signal[:,0], 'r+')
+# axes[0].plot(filtered_signal[:,0], 'ro')
+# axes[1].plot(original_signal[:,1], 'g+')
+# axes[1].plot(filtered_signal[:,1], 'go')
+# axes[2].plot(original_signal[:,2], 'b+')
+# axes[2].plot(filtered_signal[:,2], 'bo')
+# plt.show(fig)
 
 # physicsClient = p.connect(p.GUI)
-# model = crawler.Crawler(spine_segments=8)filtered_signal = 
+# model = crawler.Crawler()
 
 # print(model.generate_fmax_array_lateral(5))
 # print(model.generate_gain_matrix_lateral(10))
