@@ -6,6 +6,6 @@ echo "$t"
 if [ $t ]
 then
     echo "correctly checked the URDF"
-    source ./bin/activate
+    conda activate ./envs
     python3 sim_crawler.py
 fi
