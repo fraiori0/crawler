@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import matplotlib
 import time
 import pybullet_data
-import crawler as crw
+import crawler_old as crw
 from math import *
 import pinocchio as pin
 import pyparsing
@@ -111,11 +111,13 @@ data = pinmodel.createData()
 ###
 print("\n\n\nYOHHHHHHH")
 q_pin = q[model.mask_q_pyb_to_pin]
+q_pin[6]=0.98
 qd_pin = qd[model.mask_qd_pyb_to_pin]
 qdd_pin = qdd[model.mask_qd_pyb_to_pin]
 # q_pin[2]=1
 # qd_pin[2]=1
 # qdd_pin[2]=-9.81
+print("shape q_pin:", q_pin.shape)
 print("Q_PIN\n",np.round(q_pin,5))
 print("QD_PIN\n",np.round(qd_pin,5))
 print("QDD_PIN\n",np.round(qdd_pin,5))
@@ -132,6 +134,7 @@ indices = list(range(model.num_joints))
 joint_states = p.getJointStates(model.Id,indices)
 joint_states_np = np.array(joint_states)
 tau_real_np = joint_states_np[:,3]
+print("TAU REAL SHAPE: ",tau_real_np.shape)
 print("TAU REAL: ",tau_real_np)
 print("\n\n\n")
 
