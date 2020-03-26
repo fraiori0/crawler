@@ -526,14 +526,14 @@ class Crawler:
         thetadd = -pi*pi*(theta0-thetaf)*cos(pi*ti/t_stance)/(2*t_stance*t_stance)
         return theta, thetad, thetadd
     
-    def generate_joints_trajectory(self, theta0, thetaf, ti, t_stance, RL, qa_des, qda_des, qdda_des):
+    def generate_joints_trajectory(self, theta0, thetaf, ti, t_stance, qa_des, qda_des, qdda_des):
         #ti = time from start of the walking locomotion, t_stance = total (desired) stance phase duration
         # RL=0 if right leg stance, 1 if left leg stance (stance leg is the one with the constraied foot)
         # q[3:6] must be a quaternion
         q_des = self.state.q.copy()
         qd_des = self.state.qd.copy()
         qdd_des = self.state.qdd.copy()
-        # Right leg abdction trajectory
+        # Right leg abduction trajectory
         right_abd = self.generate_abduction_trajectory(theta0,thetaf,ti,t_stance)
         q_des[(7 + self.control_indices[1][0])] = right_abd[0]
         qd_des[(6 + self.control_indices[1][0])] = right_abd[1]
@@ -545,10 +545,14 @@ class Crawler:
         q_des[(7 + self.control_indices[2][0])] = -(left_abd[0])
         qd_des[(6 + self.control_indices[2][0])] = -(left_abd[1])
         qdd_des[(6 + self.control_indices[2][0])] = -(left_abd[2])
-        # Stance leg flexion
-        q_des[(7 + self.control_indices[1+RL][1])] = (1-2*RL)*self.neutral_contact_flexion_angle
-        qd_des[(6 + self.control_indices[1+RL][1])] = 0
-        qdd_des[(6 + self.control_indices[1+RL][1])] = 0
+        # Right leg flexion
+        q_des[(7 + self.control_indices[1][1])] = self.neutral_contact_flexion_angle
+        qd_des[(6 + self.control_indices[1][1])] = 0
+        qdd_des[(6 + self.control_indices[1][1])] = 0
+        # Right leg flexion
+        q_des[(7 + self.control_indices[2][1])] = -self.neutral_contact_flexion_angle
+        qd_des[(6 + self.control_indices[2][1])] = 0
+        qdd_des[(6 + self.control_indices[2][1])] = 0
         # Lateral spinal joints
         q_des[self.mask_act_shifted] = qa_des
         qd_des[self.mask_act] = qda_des
@@ -593,7 +597,7 @@ class Crawler:
         eta = self.pin_data_eta.tau[self.mask_qd_pin_to_pyb] - self.state.tau
         # INVERSE DYNAMICS WITH QDDA
         pin.rnea(self.pinmodel,self.pin_data,q_pin,qd_pin,qdd_des_pin)
-        tau_act = self.pin_data.tau[self.mask_qd_pin_to_pyb] - eta
+        tau_act = self.pin_data.tau[self.mask_qd_pin_to_pyb] #- eta
         #print("TAU_EXACT:  ", np.round(tau_exact,4))
         tau_act = np.reshape(tau_act, (tau_act.shape[0],1))
         #
@@ -618,6 +622,39 @@ class Crawler:
                 force=tau[joint_i + self.state.nqbd]
                 )
         return tau
+    
+    def generate_Kp(self, Kp_lat, Kp_abd, Kp_flex):
+        nlat_joints = (self.state.nqd-6-4)//2
+        Kp_lat_multiplier = list(range(1,1+(nlat_joints//2))) + list(reversed(range(1, 1+(nlat_joints+1)//2)))
+        Kp_spinal_list = list()
+        for val in Kp_lat_multiplier:
+            Kp_spinal_list.append(val*Kp_lat)  #lateral joint
+            Kp_spinal_list.append(0)    #dorsal joint
+        Kp_diag_list = (
+            [0,0,0,0,0,0] +
+            Kp_spinal_list + 
+            [Kp_abd, Kp_flex] +
+            [Kp_abd, Kp_flex]
+            )
+        print(Kp_diag_list)
+        Kp = np.diag(Kp_diag_list)
+        return Kp
+    def generate_Kv(self, Kv_lat, Kv_abd, Kv_flex):
+        nlat_joints = (self.state.nqd-6-4)//2
+        Kv_lat_multiplier = list(range(1,1+(nlat_joints//2))) + list(reversed(range(1, 1+(nlat_joints+1)//2)))
+        Kv_spinal_list = list()
+        for val in Kv_lat_multiplier:
+            Kv_spinal_list.append(val*Kv_lat)  #lateral joint
+            Kv_spinal_list.append(0)    #dorsal joint
+        Kv_diag_list = (
+            [0,0,0,0,0,0] +
+            Kv_spinal_list + 
+            [Kv_abd, Kv_flex] +
+            [Kv_abd, Kv_flex]
+            )
+        print(Kv_diag_list)
+        Kv = np.diag(Kv_diag_list)
+        return Kv
     
     def control_leg_abduction(self, RL, theta0, thetaf, ti, t_stance, fmax=1, positionGain=1, velocityGain=0.5):
         #ti = time from start of the stance phase, t_stance = total (desired) stance phase duration

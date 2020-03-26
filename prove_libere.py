@@ -138,6 +138,7 @@ print("TAU REAL SHAPE: ",tau_real_np.shape)
 print("TAU REAL: ",tau_real_np)
 print("\n\n\n")
 
+
 ###
 # Sample a random configuration
 # print("Q RANDOM")

@@ -13,7 +13,7 @@ matplotlib.use('TkAgg')
 ####### SIMULATION SET-UP ###############
 #########################################
 ### time-step used for simulation and total time passed variable
-dt = 1./240.
+dt = 1./300.
 #
 physicsClient = p.connect(p.GUI)
 p.setAdditionalSearchPath(pybullet_data.getDataPath())
@@ -48,9 +48,9 @@ for index in range(-1,model.num_joints):
 for i in range(-1,model.num_joints-4):
     p.changeDynamics(model.Id,
         linkIndex = i,
-        lateralFriction = 0.2,
-        spinningFriction = 0.2,
-        rollingFriction = 0.2,
+        lateralFriction = 0.12,
+        spinningFriction = 0.12,
+        rollingFriction = 0.012,
         restitution = 0.1,
         #contactStiffness = 0,
         #contactDamping = 0
@@ -59,9 +59,9 @@ for i in range(-1,model.num_joints-4):
 for i in range(model.num_joints-4,model.num_joints):
     p.changeDynamics(model.Id,
         linkIndex = i,
-        lateralFriction = 0.001,
-        spinningFriction = 0.002,
-        rollingFriction = 0.002,
+        lateralFriction = 0.12,
+        spinningFriction = 0.12,
+        rollingFriction = 0.012,
         restitution = 0.1,
         #contactStiffness = 0,
         #contactDamping = 0
@@ -79,22 +79,16 @@ for i in range(0,model.num_joints,2):
 ##########################################
 ####### WALKING SIMULATION ###############
 ##########################################
-K_lateral = 30 # is K_lateral useless with torque control?
-k0_lateral = 30
-#vGain_lateral = 0.8
-model.set_low_pass_lateral_qa(fc=1000)
-model.set_low_pass_qd(fc=100)
-model.set_low_pass_tau(fc=100)
+K_lateral = 100
+k0_lateral = 200
+###
+Kp = model.generate_Kp(Kp_lat=4000, Kp_abd=20000, Kp_flex=300)
+Kv = model.generate_Kv(Kv_lat=800, Kv_abd=6000, Kv_flex=120)
+###
+#model.set_low_pass_qd(fc=10)
+model.set_low_pass_lateral_qa(fc=10)
+model.set_low_pass_tau(fc=50)
 model.integrator_lateral_qa.reset(np.array([0]*len(model.control_indices[0])))
-Kp = np.diag(([500]*model.state.nqd))
-Kp[22,22]=8000
-Kv = np.diag(([200]*model.state.nqd))
-Kv[22,22]=1000
-# fmax_leg_abd = 40
-# fmax_leg_flex = 40
-# pGain_leg = 1
-# vGain_leg = 0.5
-# fmax_lateral = model.generate_fmax_array_lateral(100)
 
 ##########################################
 ####### WALKING SIMULATION ###############
@@ -118,17 +112,7 @@ for i in range (50):
     p.stepSimulation()
     time.sleep(dt)
 
-def right_step_torque_control(t,eq_history, eCOM_history, des_history, tau_history):
-    ti = 0.0
-    ### constraints switch
-    model.free_left_foot()
-    model.fix_right_foot()
-    ### "turn off" swing leg flexion
-    model.turn_off_joint(model.control_indices[2][1])
-    ### Let the model adapt to the new constraints
-    for i in range(5):
-        p.stepSimulation()
-        time.sleep(dt)
+def single_step_torque_control(t,eq_history, eCOM_history, des_history, tau_history, steps):
     ### Stepping
     model.set_COM_y_ref()
     qda_des_history=np.array(([0]*len(model.control_indices[0])))
@@ -144,9 +128,8 @@ def right_step_torque_control(t,eq_history, eCOM_history, des_history, tau_histo
         q_des, qd_des, qdd_des = model.generate_joints_trajectory(
             theta0=theta_g0,
             thetaf=theta_gf,
-            ti=ti,
+            ti=t,
             t_stance=t_stance,
-            RL=0,
             qa_des=qa_des,
             qda_des=qda_des,
             qdda_des=qdda_des
@@ -166,7 +149,6 @@ def right_step_torque_control(t,eq_history, eCOM_history, des_history, tau_histo
         eCOM_history = np.vstack((eCOM_history,model.COM_position_world()[1]))
         ###
         p.stepSimulation()
-        ti += dt
         t += dt
         ###
         ### show COM trajectory
@@ -174,10 +156,39 @@ def right_step_torque_control(t,eq_history, eCOM_history, des_history, tau_histo
         p.addUserDebugLine(COM_prev.tolist(), COM_curr.tolist(), lineColorRGB=[sin(4*pi*t),sin(4*pi*(t+0.33)),sin(4*pi*(t+0.67))],lineWidth=3, lifeTime=2)
         #
         time.sleep(dt)
-    return ti, eq_history, eCOM_history, des_history, tau_history
+    return t, eq_history, eCOM_history, des_history, tau_history
+
+# 
 
 ###################
-t,eq_history, eCOM_history, des_history, tau_history = right_step_torque_control(t,eq_history, eCOM_history,des_history,tau_history)
+t=0.0
+##############
+### RIGHT STEP
+model.fix_right_foot()
+model.free_left_foot()
+# ### Let the model adapt to the new constraints
+# for i in range(5):
+#     p.stepSimulation()
+#     time.sleep(dt)
+t,eq_history, eCOM_history, des_history, tau_history = single_step_torque_control(t,eq_history, eCOM_history,des_history,tau_history, steps=steps)
+print("\n\n\n")
+model.fix_left_foot()
+model.free_right_foot()
+#############
+### LEFT STEP
+model.fix_left_foot()
+model.free_right_foot()
+
+t,eq_history, eCOM_history, des_history, tau_history = single_step_torque_control(
+    t,
+    eq_history,
+    eCOM_history,
+    des_history,tau_history, 
+    steps = steps
+    )
+##########################################
+####### PRINT RESULTS ####################
+##########################################
 
 tau_history = np.array(tau_history)
 #print("Shape des_history: ", des_history.shape)
@@ -190,6 +201,9 @@ qdda_des_history = np.array(des_history[0][2])[model.mask_act_shifted]
 qrg_des_history = (np.array(des_history[0][0][23]))
 qdrg_des_history = (np.array(des_history[0][1][22]))
 qddrg_des_history = (np.array(des_history[0][2][22]))
+qlg_des_history = (np.array(des_history[0][0][25]))
+qdlg_des_history = (np.array(des_history[0][1][24]))
+qddlg_des_history = (np.array(des_history[0][2][24]))
 for i in range(1,len(des_history)):
     qa_des_history=np.vstack((qa_des_history,np.array(des_history[i][0])[model.mask_act_shifted]))
     qda_des_history=np.vstack((qda_des_history,np.array(des_history[i][1])[model.mask_act_shifted]))
@@ -197,37 +211,51 @@ for i in range(1,len(des_history)):
     qrg_des_history = np.vstack((qrg_des_history, np.array(des_history[i][0][23])))
     qdrg_des_history = np.vstack((qdrg_des_history, np.array(des_history[i][1][22])))
     qddrg_des_history = np.vstack((qddrg_des_history, np.array(des_history[i][2][22])))
+    qlg_des_history = np.vstack((qlg_des_history, np.array(des_history[i][0][25])))
+    qdlg_des_history = np.vstack((qdlg_des_history, np.array(des_history[i][1][24])))
+    qddlg_des_history = np.vstack((qddlg_des_history, np.array(des_history[i][2][24])))
 ###
 eqa_history = eq_history[0][model.mask_act]
 eqrg_history = eq_history[0][22]
+eqlg_history = eq_history[0][24]
 for i in range(1,eq_history.shape[0]):
     eqa_history = np.vstack((eqa_history,eq_history[i][model.mask_act]))
     eqrg_history = np.vstack((eqrg_history,eq_history[i][22]))
+    eqlg_history = np.vstack((eqlg_history,eq_history[i][24]))
 ###
 tau_lateral_history=np.array(tau_history[0])[model.mask_act]
 tau_rg_history=np.array(tau_history[0][22])
+tau_lg_history=np.array(tau_history[0][24])
 for i in range(1,tau_history.shape[0]):
     tau_lateral_history=np.vstack((tau_lateral_history,np.array(tau_history[i])[model.mask_act]))
     tau_rg_history=np.vstack((tau_rg_history, tau_history[i][22]))
+    tau_lg_history=np.vstack((tau_lg_history, tau_history[i][24]))
 ###
 fig, axs = plt.subplots(3,3)
 #plt.plot(e,"b")
 # for i in range(eq_history.shape[1]):
 #     axs[0,0].plot(eq_history[:,i])
 # axs[0,0].set_title("eq\nLateral joints positional error")
-axs[0,0].plot(qrg_des_history, color="xkcd:dark teal")
-axs[0,0].plot(qdrg_des_history, color="xkcd:teal")
-axs[0,0].plot(qddrg_des_history, color="xkcd:light teal")
-axs[0,0].plot(tau_rg_history, color="xkcd:salmon")
-axs[0,0].plot(eqrg_history, color="xkcd:orange")
-axs[0,0].set_title("Right abduction")
 for i in range(1,1+qda_des_history.shape[1]):
     axs[i//3,i%3].plot(qa_des_history[:,i-1], color="xkcd:dark teal")
     axs[i//3,i%3].plot(qda_des_history[:,i-1], color="xkcd:teal")
     axs[i//3,i%3].plot(qdda_des_history[:,i-1], color="xkcd:light teal")
-    axs[i//3,i%3].plot(tau_lateral_history[:,i-1], color="xkcd:salmon")
+    #axs[i//3,i%3].plot(tau_lateral_history[:,i-1], color="xkcd:salmon")
     axs[i//3,i%3].plot(eqa_history[:,i-1], color="xkcd:orange")
     axs[i//3,i%3].set_title("Lateral joint %d" %i)
+fig_g, axs_g = plt.subplots(1,2)
+axs_g[1].plot(qlg_des_history, color="xkcd:dark teal")
+axs_g[1].plot(qdlg_des_history, color="xkcd:teal")
+axs_g[1].plot(qddlg_des_history, color="xkcd:light teal")
+#axs_g[1].plot(tau_lg_history, color="xkcd:salmon")
+axs_g[1].plot(eqlg_history, color="xkcd:orange")
+axs_g[1].set_title("Left abduction")
+axs_g[0].plot(qrg_des_history, color="xkcd:dark teal")
+axs_g[0].plot(qdrg_des_history, color="xkcd:teal")
+axs_g[0].plot(qddrg_des_history, color="xkcd:light teal")
+#axs_g[0].plot(tau_rg_history, color="xkcd:salmon")
+axs_g[0].plot(eqrg_history, color="xkcd:orange")
+axs_g[0].set_title("Right abduction")
 # fig_tau, axs_tau = plt.subplots(3,3)
 # for i in range(1,1+qda_des_history.shape[1]):
 #     axs_tau[i//3,i%3].plot(tau_lateral_history[:,i-1],color="tab:orange")
@@ -237,6 +265,65 @@ for i in range(1,1+qda_des_history.shape[1]):
 plt.show()
 
 p.disconnect()
+
+
+#def right_step_torque_control(t,eq_history, eCOM_history, des_history, tau_history):
+#     ti = 0.0
+#     ### constraints switch
+#     model.free_left_foot()
+#     model.fix_right_foot()
+#     ### "turn off" swing leg flexion
+#     model.turn_off_joint(model.control_indices[2][1])
+#     ### Let the model adapt to the new constraints
+#     for i in range(5):
+#         p.stepSimulation()
+#         time.sleep(dt)
+#     ### Stepping
+#     model.set_COM_y_ref()
+#     qda_des_history=np.array(([0]*len(model.control_indices[0])))
+#     for tau in range (steps):
+#         #print("\n\n\n\n##### STEP %d #####" %tau)
+#         model.state.update()
+#         COM_prev = model.COM_position_world()
+#         qa_des, qda_des, qdda_des = model.solve_null_COM_y_speed_optimization_qdda(
+#             qda_prev = qda_des_history[-1],
+#             K = K_lateral,
+#             filtered = True)
+#         qda_des_history = np.vstack((qda_des_history, qda_des))
+#         q_des, qd_des, qdd_des = model.generate_joints_trajectory(
+#             theta0=theta_g0,
+#             thetaf=theta_gf,
+#             ti=ti,
+#             t_stance=t_stance,
+#             RL=0,
+#             qa_des=qa_des,
+#             qda_des=qda_des,
+#             qdda_des=qdda_des
+#         )
+#         des_history.append([q_des,qd_des,qdd_des])
+#         tau, eq = model.solve_computed_torque_control(
+#             q_des=q_des,
+#             qd_des=qd_des,
+#             qdd_des=qdd_des,
+#             Kp=Kp,
+#             Kv=Kv,
+#             verbose=False
+#         )
+#         model.apply_torques(tau_des=tau, filtered=True)
+#         tau_history.append(tau)
+#         eq_history=np.vstack((eq_history,eq))
+#         eCOM_history = np.vstack((eCOM_history,model.COM_position_world()[1]))
+#         ###
+#         p.stepSimulation()
+#         ti += dt
+#         t += dt
+#         ###
+#         ### show COM trajectory
+#         COM_curr = model.COM_position_world()
+#         p.addUserDebugLine(COM_prev.tolist(), COM_curr.tolist(), lineColorRGB=[sin(4*pi*t),sin(4*pi*(t+0.33)),sin(4*pi*(t+0.67))],lineWidth=3, lifeTime=2)
+#         #
+#         time.sleep(dt)
+#     return ti, eq_history, eCOM_history, des_history, tau_history
 
 
 # for i in range (1200):
