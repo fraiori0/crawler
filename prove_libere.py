@@ -111,7 +111,6 @@ data = pinmodel.createData()
 ###
 print("\n\n\nYOHHHHHHH")
 q_pin = q[model.mask_q_pyb_to_pin]
-q_pin[6]=0.98
 qd_pin = qd[model.mask_qd_pyb_to_pin]
 qdd_pin = qdd[model.mask_qd_pyb_to_pin]
 # q_pin[2]=1
@@ -151,9 +150,9 @@ print("\n\n\n")
 # print(pin.rnea(pinmodel,data,np.array(([0]*(pinmodel.nq+6))),np.array(([0]*(pinmodel.nq+6))),np.array(([0]*(pinmodel.nq+6)))))
 # Print out the placement of each joint of the kinematic tree
 # pin.forwardKinematics(pinmodel,data,q)
-# for name, oMi, tau in zip(pinmodel.names, data.oMi, data.tau):
-#     print(("{:<24} : {: .2f} {: .2f} {: .2f} : {: .2f}"
-#         .format( name, *oMi.translation.T.flat, tau )))
+for name, oMi, tau in zip(pinmodel.names, data.oMi, data.tau):
+    print(("{:<24} : {: .2f} {: .2f} {: .2f} : {: .2f}"
+        .format( name, *oMi.translation.T.flat, tau )))
 # print(model.mask_q_py_to_pin)
 # print(model.mask_qd_py_to_pin)
 p.disconnect()

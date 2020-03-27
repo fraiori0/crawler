@@ -79,7 +79,11 @@ class Model_State:
         self.joint_indices_q = list(range(self.nqb,self.nq))
         self.joint_indices_qd = list(range(self.nqbd,self.nqd))
         ###
+        self.low_pass = Discrete_Low_Pass(dim = self.nqd,dt=self.dt,fc=100)
     
+    def set_low_pass(self, fc):
+        self.low_pass = Discrete_Low_Pass(dim = self.nqd,dt=self.dt,fc=fc)
+
     def set_vel(self,qd_new):
         self.qd_prev = self.qd
         self.qd = qd_new
@@ -88,24 +92,27 @@ class Model_State:
         self.qbd = self.qd[list(range(6))]
         self.qjd = self.qd[list(range(6,self.nqd))]
 
-    def set_acc(self):
-        self.qdd = (self.qd - self.qd_prev)/self.dt
+    def set_acc(self, filtered=False):
+        if filtered:
+            self.qdd = self.low_pass.filter((self.qd - self.qd_prev)/self.dt)
+        else:
+            self.qdd = (self.qd - self.qd_prev)/self.dt
         self.qbdd = self.qdd[list(range(6))]
         self.qjdd = self.qdd[list(range(6,self.nqd))]
     
-    def update(self):
+    def update(self, filtered_acc=False):
         #NOTE: this function should be called only ONCE PER TIME-STEP, otherwise qdd will be set to 0
         info_qb = p.getBasePositionAndOrientation(self.modelId)
         info_qbd = p.getBaseVelocity(self.modelId)
         qbd_new = np.concatenate((info_qbd[0],info_qbd[1]))
         info_j = np.array(p.getJointStates(self.modelId,list(range(self.nqjd))))
         qjd_new = info_j[:,1].astype(np.double)
-        qd_new = np.concatenate((qbd_new,qjd_new))#.astype(np.double)
+        qd_new = np.concatenate((qbd_new,qjd_new))
         self.qb = np.concatenate((info_qb[0],info_qb[1]))
         self.qj = info_j[:,0].astype(np.double)
         self.q = np.concatenate((self.qb,self.qj))
         self.set_vel(qd_new)
-        self.set_acc()
+        self.set_acc(filtered=filtered_acc)
         self.tau[self.joint_indices_qd] = info_j[:,3].astype(np.double)
 
 
@@ -119,7 +126,7 @@ class Crawler:
         self.spine_segments         = 8
         self.body_length            = self.scale * 1
         self.spine_segment_length   = self.scale * self.body_length/self.spine_segments
-        self.leg_length             = self.scale * self.body_length/8
+        self.leg_length             = self.scale * self.body_length/6
         self.body_sphere_radius     = self.scale * self.spine_segment_length/2
         self.foot_sphere_radius     = self.scale * self.body_sphere_radius/3
         #
@@ -325,8 +332,8 @@ class Crawler:
                 }
         return    
 
-    # def get_joints_pos_tuple(self):
-    #     return list(zip(*(p.getJointStates(self.Id,list(range(0,self.num_joints))))))[0]
+    def get_joints_pos_tuple(self):
+        return list(zip(*(p.getJointStates(self.Id,list(range(0,self.num_joints))))))[0]
 
     # def get_joints_speeds_tuple(self):
     #     return list(zip(*(p.getJointStates(self.Id,list(range(0,self.num_joints))))))[1]
@@ -372,12 +379,13 @@ class Crawler:
             # this Jacobian is rearranged so that it should multiply a state 
             # composed as (base_translation, base_rotation, joints), as usual
         ###
+        joints_pos = self.get_joints_pos_tuple()
         J = np.asarray(
             p.calculateJacobian(self.Id,
                 link_index,
                 self.links_state_array[link_index]["loc_com_trn"],
-                #joints_pos,
-                self.state.qj.tolist(),
+                joints_pos,
+                #self.state.qj.tolist(),
                 [0.0]*(self.num_joints),
                 #self.get_joints_speeds_tuple(),
                 [0.0]*(self.num_joints))
@@ -461,6 +469,10 @@ class Crawler:
             # Returned flattened as a NUMPY ARRAY (qda.shape,)
         qda = np.ndarray.flatten(Jwr.dot(xd_desired + K*eCOMy) + P.dot(q0da))
         if verbose:
+            print("bd\n", np.round(bd,3))
+            print("qda\n", np.round(qda,3))
+            print("Jyb: ", np.ndarray.flatten(np.round(Jyb,4)))
+            print("Jy: ", np.round(Jy,4))
             print("xd_desired = ", xd_desired)
             print("qdn", np.ndarray.flatten(qdn))
             print("Jyb.dot(bd) = ", Jyb.dot(bd))
@@ -554,11 +566,12 @@ class Crawler:
         qd_des[(6 + self.control_indices[2][1])] = 0
         qdd_des[(6 + self.control_indices[2][1])] = 0
         # Lateral spinal joints
-        q_des[self.mask_act_shifted] = qa_des
-        qd_des[self.mask_act] = qda_des
-        qdd_des[self.mask_act] = qdda_des
-        pass
-        return q_des, qd_des, qdd_des
+        q_des[self.mask_act_shifted] = qa_des #np.array([1]*len(self.mask_act_shifted))*0.1*sin(ti*pi)
+        qd_des[self.mask_act] = qda_des #np.array([1]*len(self.mask_act_shifted))*pi*0.1*cos(ti*pi)
+        qdd_des[self.mask_act] = qdda_des #np.array([1]*len(self.mask_act_shifted))*(-pi*pi*0.1*sin(ti*pi))
+        # position error, base is set to 0
+        e = np.concatenate(([0.0,0.0,0.0,0.0,0.0,0.0],(q_des[self.mask_joints_shifted] - self.state.q[self.mask_joints_shifted])))
+        return q_des, qd_des, qdd_des, e
     
     def solve_computed_torque_control(self, q_des, qd_des, qdd_des, Kp, Kv, verbose=False): 
         ### Everything should be passed as a NUMPY ARRAY
@@ -575,8 +588,6 @@ class Crawler:
         # to match the shape of the two error, the error term of the base configuration will be cosidered
         # [0,0,0,0,0,0], instead of computing it properly through quaternion rotation
         e = np.concatenate(([0.0,0.0,0.0,0.0,0.0,0.0],(q_des[self.mask_joints_shifted] - self.state.q[self.mask_joints_shifted])))
-        print(self.state.q[self.mask_joints_shifted])
-        q_des[self.mask_joints_shifted]
         e = np.reshape(e,(e.shape[0],1))
         ### DYNAMICS (Pinocchio library)
         # see https://github.com/stack-of-tasks/pinocchio/blob/master/bindings/python/multibody/data.hpp)
@@ -597,13 +608,65 @@ class Crawler:
         eta = self.pin_data_eta.tau[self.mask_qd_pin_to_pyb] - self.state.tau
         # INVERSE DYNAMICS WITH QDDA
         pin.rnea(self.pinmodel,self.pin_data,q_pin,qd_pin,qdd_des_pin)
-        tau_act = self.pin_data.tau[self.mask_qd_pin_to_pyb] #- eta
+        tau_act = self.pin_data.tau[self.mask_qd_pin_to_pyb] - eta
         #print("TAU_EXACT:  ", np.round(tau_exact,4))
         tau_act = np.reshape(tau_act, (tau_act.shape[0],1))
         #
         tau_act_closed_loop = tau_act + M.dot(Kv).dot(ed) + M.dot(Kp).dot(e)
         tau_act_closed_loop = np.reshape(tau_act_closed_loop, (tau_act_closed_loop.shape[0],))
         return tau_act_closed_loop, np.ndarray.flatten(e)
+    
+    def solve_computed_torque_control_sliding(self, q_des, qd_des, qdd_des, Kp, Kv, rho, verbose=False): 
+        ### Everything should be passed as a NUMPY ARRAY
+        # See comments in the function solve_computed_torque_control
+        q_pin = self.state.q[self.mask_q_pyb_to_pin]
+        qd_pin = self.state.qd[self.mask_qd_pyb_to_pin]
+        qdd_pin = self.state.qdd[self.mask_qd_pyb_to_pin]
+        qdd_des_pin = qdd_des[self.mask_qd_pyb_to_pin]        
+        # Set errors value
+        ed = qd_des - self.state.qd
+        ed = np.reshape(ed,(ed.shape[0],1))
+        e = np.concatenate(([0.0,0.0,0.0,0.0,0.0,0.0],(q_des[self.mask_joints_shifted] - self.state.q[self.mask_joints_shifted])))
+        e = np.reshape(e,(e.shape[0],1))
+        delta = self.compute_sliding_delta(Kp=Kp, Kv=Kv, rho=rho, e=e, ed=ed)
+        # print("DELTA:\n", delta)
+        # print("E:\n", e, "\n")
+        delta = np.reshape(delta,(delta.shape[0],1))
+        ###
+        pin.crba(self.pinmodel, self.pin_data, q_pin)
+        M = self.pin_data.M
+        # # Estimate of the disturbance term (eta) 
+        pin.rnea(self.pinmodel,self.pin_data_eta,q_pin,qd_pin,qdd_pin)
+        eta = self.pin_data_eta.tau[self.mask_qd_pin_to_pyb] - self.state.tau
+        # INVERSE DYNAMICS WITH QDDA
+        pin.rnea(self.pinmodel,self.pin_data,q_pin,qd_pin,qdd_des_pin)
+        tau_act = self.pin_data.tau[self.mask_qd_pin_to_pyb] - eta
+        #print("TAU_EXACT:  ", np.round(tau_exact,4))
+        tau_act = np.reshape(tau_act, (tau_act.shape[0],1))
+        #
+        tau_act_closed_loop = tau_act + M.dot(Kv).dot(ed) + M.dot(Kp).dot(e) + M.dot(delta)
+        print("tau_act[20]          ", tau_act[20])
+        print("M.dot(Kv).dot(ed)    ", (M.dot(Kv).dot(ed))[20])
+        print("M.dot(Kp).dot(e)     ", (M.dot(Kp).dot(e))[20])
+        print("M.dot(delta) ", (M.dot(delta))[20])
+        tau_act_closed_loop = np.reshape(tau_act_closed_loop, (tau_act_closed_loop.shape[0],))
+        return tau_act_closed_loop, np.ndarray.flatten(e)
+
+    def compute_sliding_delta(self, Kp, Kv, rho, e, ed, q=1):
+        A11 = np.empty(Kp.shape)
+        A12 = np.eye(Kv.shape[1])
+        A21 = - Kp.copy()
+        A22 = - Kv.copy()
+        A = np.block([[A11, A12],[A21, A22]])
+        Q = q * np.eye(A.shape[0])
+        P = lna.solve_continuous_lyapunov(A, Q)
+        B1 = A11.copy()
+        B2 = A12.copy()
+        B = np.vstack((B1,B2))
+        x = np.vstack((e,ed))
+        sliding_vector = (B.T).dot((P.T).dot(x))
+        delta = rho * sliding_vector/(lna.norm(sliding_vector))
+        return delta
 
     def apply_torques(self, tau_des, filtered=True):
         # filtered version is better to avoid applying discontinuous torques to the joints
@@ -613,7 +676,8 @@ class Crawler:
             tau = tau_des
         #flatten control_indices to use for setting torques with a single loop
         index = [i for index_tuple in self.control_indices for i in index_tuple]
-        #print("---->>> INDEX: ", index)
+        # print("tau_des:\n", tau)
+        # print("---->>> INDEX: ", index)
         for joint_i in index:
             p.setJointMotorControl2(
                 self.Id, 
@@ -621,40 +685,139 @@ class Crawler:
                 p.TORQUE_CONTROL,
                 force=tau[joint_i + self.state.nqbd]
                 )
+            #print("joint_i: ", joint_i, "tau %d: " %(joint_i + self.state.nqbd), tau[joint_i + self.state.nqbd])
         return tau
     
-    def generate_Kp(self, Kp_lat, Kp_abd, Kp_flex):
+    def generate_Kp(self, Kp_lat, Kp_r_abd, Kp_l_abd, Kp_flex):
         nlat_joints = (self.state.nqd-6-4)//2
         Kp_lat_multiplier = list(range(1,1+(nlat_joints//2))) + list(reversed(range(1, 1+(nlat_joints+1)//2)))
         Kp_spinal_list = list()
+        #If the next line is not commented the lateral joints will have decreasing values
+        # starting from the girdle, otherwise they will have the max value at the center of the body
+        # If the foot act as fixed contraint leave this line uncommented.
+        # Kp_lat is always the minimum gain
+        Kp_lat_multiplier = list(reversed(range(1,nlat_joints+1)))
         for val in Kp_lat_multiplier:
-            Kp_spinal_list.append(val*Kp_lat)  #lateral joint
-            Kp_spinal_list.append(0)    #dorsal joint
+            Kp_spinal_list.append(val*Kp_lat)   # i-th lateral joint
+            Kp_spinal_list.append(0)            # i-th dorsal joint
         Kp_diag_list = (
             [0,0,0,0,0,0] +
             Kp_spinal_list + 
-            [Kp_abd, Kp_flex] +
-            [Kp_abd, Kp_flex]
+            [Kp_r_abd, Kp_flex] +
+            [Kp_l_abd, Kp_flex]
             )
         print(Kp_diag_list)
         Kp = np.diag(Kp_diag_list)
         return Kp
-    def generate_Kv(self, Kv_lat, Kv_abd, Kv_flex):
+
+    def generate_Kv(self, Kv_lat, Kv_r_abd, Kv_l_abd, Kv_flex):
         nlat_joints = (self.state.nqd-6-4)//2
         Kv_lat_multiplier = list(range(1,1+(nlat_joints//2))) + list(reversed(range(1, 1+(nlat_joints+1)//2)))
         Kv_spinal_list = list()
+        #If the next line is not commented the lateral joints will have decreasing values
+        # starting from the girdle, otherwise they will have the max value at the center of the body
+        # If the foot act as fixed contraint leave this line uncommented.
+        # Kp_lat is always the minimum gain
+        Kv_lat_multiplier = list(reversed(range(1,nlat_joints+1)))
         for val in Kv_lat_multiplier:
-            Kv_spinal_list.append(val*Kv_lat)  #lateral joint
-            Kv_spinal_list.append(0)    #dorsal joint
+            Kv_spinal_list.append(val*Kv_lat)   # i-th lateral joint
+            Kv_spinal_list.append(0)            # i-th dorsal joint
         Kv_diag_list = (
             [0,0,0,0,0,0] +
             Kv_spinal_list + 
-            [Kv_abd, Kv_flex] +
-            [Kv_abd, Kv_flex]
+            [Kv_r_abd, Kv_flex] +
+            [Kv_l_abd, Kv_flex]
             )
         print(Kv_diag_list)
         Kv = np.diag(Kv_diag_list)
         return Kv
+
+    def generate_fmax_list(self, fmax_lat, fmax_r_abd, fmax_l_abd, fmax_flex):
+        # Generate the list of fmax for the joints, to be used with PD control
+        nlat_joints = (self.state.nqd-6-4)//2
+        lat_multiplier = list(range(1,1+(nlat_joints//2))) + list(reversed(range(1, 1+(nlat_joints+1)//2)))
+        fmax_spinal_list = list()
+        #If the next line is not commented the lateral joints will have decreasing values
+            # starting from the girdle, otherwise they will have the max value at the center of the body
+            # If the foot act as fixed contraint leave this line uncommented.
+            # fmax_lat is always the minimum value
+        lat_multiplier = list(reversed(range(1,nlat_joints+1)))
+        for val in lat_multiplier:
+            fmax_spinal_list.append(val*fmax_lat)   # i-th lateral joint
+            fmax_spinal_list.append(0)              # i-th dorsal joint
+        fmax_list = (
+            fmax_spinal_list + 
+            [fmax_r_abd, fmax_flex] +
+            [fmax_l_abd, fmax_flex]
+            )
+        return fmax_list
+    
+    def generate_pGain_list(self, pGain_lat, pGain_r_abd, pGain_l_abd, pGain_flex):
+        # Generate the list of pGain for the joints, to be used with PD control
+        nlat_joints = (self.state.nqd-6-4)//2
+        lat_multiplier = list(range(1,1+(nlat_joints//2))) + list(reversed(range(1, 1+(nlat_joints+1)//2)))
+        pGain_spinal_list = list()
+        #If the next line is not commented the lateral joints will have decreasing values
+            # starting from the girdle, otherwise they will have the max value at the center of the body
+            # If the foot act as fixed contraint leave this line uncommented.
+            # pGain_lat is always the minimum value
+        #lat_multiplier = list(reversed(range(1,nlat_joints+1)))
+        for val in lat_multiplier:
+            pGain_spinal_list.append(val*pGain_lat)   # i-th lateral joint
+            pGain_spinal_list.append(0)              # i-th dorsal joint
+        pGain_list = (
+            pGain_spinal_list + 
+            [pGain_r_abd, pGain_flex] +
+            [pGain_l_abd, pGain_flex]
+            )
+        return pGain_list
+    
+    def generate_vGain_list(self, vGain_lat, vGain_r_abd, vGain_l_abd, vGain_flex):
+        # Generate the list of vGain for the joints, to be used with PD control
+        nlat_joints = (self.state.nqd-6-4)//2
+        lat_multiplier = list(range(1,1+(nlat_joints//2))) + list(reversed(range(1, 1+(nlat_joints+1)//2)))
+        vGain_spinal_list = list()
+        #If the next line is not commented the lateral joints will have decreasing values
+            # starting from the girdle, otherwise they will have the max value at the center of the body
+            # If the foot act as fixed contraint leave this line uncommented.
+            # vGain_lat is always the minimum value
+        #lat_multiplier = list(reversed(range(1,nlat_joints+1)))
+        for val in lat_multiplier:
+            vGain_spinal_list.append(val*vGain_lat)   # i-th lateral joint
+            vGain_spinal_list.append(0)              # i-th dorsal joint
+        vGain_list = (
+            vGain_spinal_list + 
+            [vGain_r_abd, vGain_flex] +
+            [vGain_l_abd, vGain_flex]
+            )
+        return vGain_list
+    
+    def PD_control(self, q_des, fmax_list, pGain_list, vGain_list):
+        index = [i for index_tuple in self.control_indices for i in index_tuple]
+        for joint_i in index:
+            p.setJointMotorControl2(
+                self.Id, 
+                joint_i, 
+                p.POSITION_CONTROL,
+                targetPosition=q_des[joint_i + self.state.nqbd],
+                force=fmax_list[joint_i],
+                positionGain = pGain_list[joint_i],
+                velocityGain = vGain_list[joint_i]
+                )
+        return q_des
+    
+    def P_control_vel(self, qd_des, fmax_list, pGain_list):
+        index = [i for index_tuple in self.control_indices for i in index_tuple]
+        for joint_i in index:
+            p.setJointMotorControl2(
+                self.Id, 
+                joint_i, 
+                p.VELOCITY_CONTROL,
+                targetVelocity=qd_des[joint_i + self.state.nqbd],
+                force=fmax_list[joint_i],
+                velocityGain = pGain_list[joint_i],
+                )
+        return qd_des
     
     def control_leg_abduction(self, RL, theta0, thetaf, ti, t_stance, fmax=1, positionGain=1, velocityGain=0.5):
         #ti = time from start of the stance phase, t_stance = total (desired) stance phase duration

@@ -7,5 +7,5 @@ if [ $t ]
 then
     echo "correctly checked the URDF"
     conda activate ./envs
-    python3 sim_crawler.py
+    python3 sim_crawler_sliding.py
 fi
