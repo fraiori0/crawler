@@ -127,7 +127,7 @@ class Crawler:
         self.body_length            = self.scale * 1
         self.spine_segment_length   = self.scale * self.body_length/self.spine_segments
         self.leg_length             = self.scale * self.body_length/6
-        self.body_sphere_radius     = self.scale * self.spine_segment_length/2
+        self.body_sphere_radius     = self.scale * self.body_length/16
         self.foot_sphere_radius     = self.scale * self.body_sphere_radius/3
         #
         self.Id = p.loadURDF(
@@ -652,7 +652,7 @@ class Crawler:
         tau_act_closed_loop = np.reshape(tau_act_closed_loop, (tau_act_closed_loop.shape[0],))
         return tau_act_closed_loop, np.ndarray.flatten(e)
 
-    def compute_sliding_delta(self, Kp, Kv, rho, e, ed, q=1):
+    def compute_sliding_delta(self, Kp, Kv, rho, e, ed, q=100):
         A11 = np.empty(Kp.shape)
         A12 = np.eye(Kv.shape[1])
         A21 = - Kp.copy()

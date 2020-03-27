@@ -15,7 +15,7 @@
 
   <xacro:property name="SPINE_SEGMENT_LENGTH" value="${BODY_LENGTH/SPINE_SEGMENTS_NUMBER}" />
   <xacro:property name="SPINE_DORSAL_BENDING_LIMIT" value="${PI/8}" />
-  <xacro:property name="SPINE_LATERAL_BENDING_LIMIT" value="${PI/3}" />
+  <xacro:property name="SPINE_LATERAL_BENDING_LIMIT" value="${PI/2}" />
 
   <xacro:property name="BODY_SPHERE_MASS" value="${BODY_MASS/(SPINE_SEGMENTS_NUMBER+1)}" /><!-- +1 for the girdle masses-->
   <xacro:property name="BODY_SPHERE_RADIUS" value="${SPINE_SEGMENT_LENGTH/2}" />
@@ -24,7 +24,7 @@
   <xacro:property name="GIRDLE_WIDTH" value="${SPINE_SEGMENT_LENGTH/2}" />
   <xacro:property name="GIRDLE_LENGTH" value="${SPINE_SEGMENT_LENGTH/2}" />
 
-  <xacro:property name="LEG_LENGTH" value="${BODY_LENGTH/8}" />
+  <xacro:property name="LEG_LENGTH" value="${BODY_LENGTH/6}" />
   <xacro:property name="LEG_TIP_MASS" value="${BODY_SPHERE_MASS/10}" />
   <xacro:property name="LEG_TIP_RADIUS" value="${BODY_SPHERE_RADIUS/3}" />
   <xacro:property name="LEG_TIP_INERTIA" value="${2*LEG_TIP_MASS*LEG_TIP_RADIUS*LEG_TIP_RADIUS/5}" />

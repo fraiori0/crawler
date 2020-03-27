@@ -23,18 +23,18 @@
   <link name="girdle">
     <inertial>
       <origin rpy="0 0 0" xyz="0 0 0"/>
-      <mass value="0.1111111111111111"/>
-      <inertia ixx="0.0003472222222222222" ixy="0" ixz="0" iyy="0.0012152777777777778" iyz="0" izz="0.0012152777777777778"/>
+      <mass value="0.3333333333333333"/>
+      <inertia ixx="0.0010416666666666667" ixy="0" ixz="0" iyy="0.042708333333333334" iyz="0" izz="0.042708333333333334"/>
     </inertial>
     <visual>
-      <origin rpy="0 0 0" xyz="0.0625 0 0"/>
+      <origin rpy="0 0 0" xyz="0.25 0 0"/>
       <geometry>
         <sphere radius="0.0625"/>
       </geometry>
       <material name="girdle_material"/>
     </visual>
     <visual>
-      <origin rpy="0 0 0" xyz="-0.0625 0 0"/>
+      <origin rpy="0 0 0" xyz="-0.25 0 0"/>
       <geometry>
         <sphere radius="0.0625"/>
       </geometry>
@@ -48,17 +48,17 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <box size="0.125 0.0125 0.0125"/>
+        <box size="0.5 0.05 0.0125"/>
       </geometry>
     </visual>
     <collision>
-      <origin rpy="0 0 0" xyz="0.0625 0 0"/>
+      <origin rpy="0 0 0" xyz="0.25 0 0"/>
       <geometry>
         <sphere radius="0.0625"/>
       </geometry>
     </collision>
     <collision>
-      <origin rpy="0 0 0" xyz="-0.0625 0 0"/>
+      <origin rpy="0 0 0" xyz="-0.25 0 0"/>
       <geometry>
         <sphere radius="0.0625"/>
       </geometry>
@@ -67,38 +67,38 @@
   <link name="spine_connection_1">
     <inertial>
       <origin rpy="0 0 0" xyz="0 0 0"/>
-      <mass value="0.0011111111111111111"/>
-      <inertia ixx="1.736111111111111e-06" ixy="0" ixz="0" iyy="1.736111111111111e-06" iyz="0" izz="1.736111111111111e-06"/>
+      <mass value="0.003333333333333333"/>
+      <inertia ixx="5.208333333333333e-06" ixy="0" ixz="0" iyy="5.208333333333333e-06" iyz="0" izz="5.208333333333333e-06"/>
     </inertial>
   </link>
   <link name="spine_link_1">
     <inertial>
-      <origin rpy="0 0 0" xyz="-0.125 0 0"/>
-      <mass value="0.1111111111111111"/>
-      <inertia ixx="0.0001736111111111111" ixy="0" ixz="0" iyy="0.0001736111111111111" iyz="0" izz="0.0001736111111111111"/>
+      <origin rpy="0 0 0" xyz="-0.5 0 0"/>
+      <mass value="0.3333333333333333"/>
+      <inertia ixx="0.0005208333333333333" ixy="0" ixz="0" iyy="0.0005208333333333333" iyz="0" izz="0.0005208333333333333"/>
     </inertial>
     <visual>
-      <origin rpy="0 0 0" xyz="-0.125 0 0"/>
+      <origin rpy="0 0 0" xyz="-0.5 0 0"/>
       <geometry>
         <sphere radius="0.0625"/>
       </geometry>
       <material name="body_material"/>
     </visual>
     <visual>
-      <origin rpy="0 0 0" xyz="-0.0625 0 0"/>
+      <origin rpy="0 0 0" xyz="-0.25 0 0"/>
       <geometry>
-        <box size="0.125 0.0125 0.00625"/>
+        <box size="0.5 0.05 0.00625"/>
       </geometry>
     </visual>
     <collision>
-      <origin rpy="0 0 0" xyz="-0.125 0 0"/>
+      <origin rpy="0 0 0" xyz="-0.5 0 0"/>
       <geometry>
         <sphere radius="0.0625"/>
       </geometry>
     </collision>
   </link>
   <joint name="spine_lateral_joint_1" type="revolute">
-    <origin rpy="0 0 0" xyz="-0.0625 0 0"/>
+    <origin rpy="0 0 0" xyz="-0.25 0 0"/>
     <axis xyz="0 0 1"/>
     <parent link="girdle"/>
     <child link="spine_connection_1"/>
@@ -116,38 +116,38 @@
   <link name="spine_connection_2">
     <inertial>
       <origin rpy="0 0 0" xyz="0 0 0"/>
-      <mass value="0.0011111111111111111"/>
-      <inertia ixx="1.736111111111111e-06" ixy="0" ixz="0" iyy="1.736111111111111e-06" iyz="0" izz="1.736111111111111e-06"/>
+      <mass value="0.003333333333333333"/>
+      <inertia ixx="5.208333333333333e-06" ixy="0" ixz="0" iyy="5.208333333333333e-06" iyz="0" izz="5.208333333333333e-06"/>
     </inertial>
   </link>
   <link name="spine_link_2">
     <inertial>
-      <origin rpy="0 0 0" xyz="-0.125 0 0"/>
-      <mass value="0.1111111111111111"/>
-      <inertia ixx="0.0001736111111111111" ixy="0" ixz="0" iyy="0.0001736111111111111" iyz="0" izz="0.0001736111111111111"/>
+      <origin rpy="0 0 0" xyz="-0.5 0 0"/>
+      <mass value="0.3333333333333333"/>
+      <inertia ixx="0.0005208333333333333" ixy="0" ixz="0" iyy="0.0005208333333333333" iyz="0" izz="0.0005208333333333333"/>
     </inertial>
     <visual>
-      <origin rpy="0 0 0" xyz="-0.125 0 0"/>
+      <origin rpy="0 0 0" xyz="-0.5 0 0"/>
       <geometry>
         <sphere radius="0.0625"/>
       </geometry>
       <material name="body_material"/>
     </visual>
     <visual>
-      <origin rpy="0 0 0" xyz="-0.0625 0 0"/>
+      <origin rpy="0 0 0" xyz="-0.25 0 0"/>
       <geometry>
-        <box size="0.125 0.0125 0.00625"/>
+        <box size="0.5 0.05 0.00625"/>
       </geometry>
     </visual>
     <collision>
-      <origin rpy="0 0 0" xyz="-0.125 0 0"/>
+      <origin rpy="0 0 0" xyz="-0.5 0 0"/>
       <geometry>
         <sphere radius="0.0625"/>
       </geometry>
     </collision>
   </link>
   <joint name="spine_lateral_joint_2" type="revolute">
-    <origin rpy="1.570795 0 0" xyz="-0.125 0 0"/>
+    <origin rpy="1.570795 0 0" xyz="-0.5 0 0"/>
     <axis xyz="0 0 1"/>
     <parent link="spine_link_1"/>
     <child link="spine_connection_2"/>
@@ -162,305 +162,11 @@
     <dynamics damping="0.01" friction="0.01"/>
     <limit effort="30" lower="-0.39269875" upper="0.39269875" velocity="1.0"/>
   </joint>
-  <link name="spine_connection_3">
-    <inertial>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <mass value="0.0011111111111111111"/>
-      <inertia ixx="1.736111111111111e-06" ixy="0" ixz="0" iyy="1.736111111111111e-06" iyz="0" izz="1.736111111111111e-06"/>
-    </inertial>
-  </link>
-  <link name="spine_link_3">
-    <inertial>
-      <origin rpy="0 0 0" xyz="-0.125 0 0"/>
-      <mass value="0.1111111111111111"/>
-      <inertia ixx="0.0001736111111111111" ixy="0" ixz="0" iyy="0.0001736111111111111" iyz="0" izz="0.0001736111111111111"/>
-    </inertial>
-    <visual>
-      <origin rpy="0 0 0" xyz="-0.125 0 0"/>
-      <geometry>
-        <sphere radius="0.0625"/>
-      </geometry>
-      <material name="body_material"/>
-    </visual>
-    <visual>
-      <origin rpy="0 0 0" xyz="-0.0625 0 0"/>
-      <geometry>
-        <box size="0.125 0.0125 0.00625"/>
-      </geometry>
-    </visual>
-    <collision>
-      <origin rpy="0 0 0" xyz="-0.125 0 0"/>
-      <geometry>
-        <sphere radius="0.0625"/>
-      </geometry>
-    </collision>
-  </link>
-  <joint name="spine_lateral_joint_3" type="revolute">
-    <origin rpy="1.570795 0 0" xyz="-0.125 0 0"/>
-    <axis xyz="0 0 1"/>
-    <parent link="spine_link_2"/>
-    <child link="spine_connection_3"/>
-    <dynamics damping="0.01" friction="0.01"/>
-    <limit effort="30" lower="-1.570795" upper="1.570795" velocity="1.0"/>
-  </joint>
-  <joint name="spine_dorsal_joint_3" type="revolute">
-    <origin rpy="-1.570795 0 0" xyz="0 0 0"/>
-    <axis xyz="0 0 1"/>
-    <parent link="spine_connection_3"/>
-    <child link="spine_link_3"/>
-    <dynamics damping="0.01" friction="0.01"/>
-    <limit effort="30" lower="-0.39269875" upper="0.39269875" velocity="1.0"/>
-  </joint>
-  <link name="spine_connection_4">
-    <inertial>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <mass value="0.0011111111111111111"/>
-      <inertia ixx="1.736111111111111e-06" ixy="0" ixz="0" iyy="1.736111111111111e-06" iyz="0" izz="1.736111111111111e-06"/>
-    </inertial>
-  </link>
-  <link name="spine_link_4">
-    <inertial>
-      <origin rpy="0 0 0" xyz="-0.125 0 0"/>
-      <mass value="0.1111111111111111"/>
-      <inertia ixx="0.0001736111111111111" ixy="0" ixz="0" iyy="0.0001736111111111111" iyz="0" izz="0.0001736111111111111"/>
-    </inertial>
-    <visual>
-      <origin rpy="0 0 0" xyz="-0.125 0 0"/>
-      <geometry>
-        <sphere radius="0.0625"/>
-      </geometry>
-      <material name="body_material"/>
-    </visual>
-    <visual>
-      <origin rpy="0 0 0" xyz="-0.0625 0 0"/>
-      <geometry>
-        <box size="0.125 0.0125 0.00625"/>
-      </geometry>
-    </visual>
-    <collision>
-      <origin rpy="0 0 0" xyz="-0.125 0 0"/>
-      <geometry>
-        <sphere radius="0.0625"/>
-      </geometry>
-    </collision>
-  </link>
-  <joint name="spine_lateral_joint_4" type="revolute">
-    <origin rpy="1.570795 0 0" xyz="-0.125 0 0"/>
-    <axis xyz="0 0 1"/>
-    <parent link="spine_link_3"/>
-    <child link="spine_connection_4"/>
-    <dynamics damping="0.01" friction="0.01"/>
-    <limit effort="30" lower="-1.570795" upper="1.570795" velocity="1.0"/>
-  </joint>
-  <joint name="spine_dorsal_joint_4" type="revolute">
-    <origin rpy="-1.570795 0 0" xyz="0 0 0"/>
-    <axis xyz="0 0 1"/>
-    <parent link="spine_connection_4"/>
-    <child link="spine_link_4"/>
-    <dynamics damping="0.01" friction="0.01"/>
-    <limit effort="30" lower="-0.39269875" upper="0.39269875" velocity="1.0"/>
-  </joint>
-  <link name="spine_connection_5">
-    <inertial>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <mass value="0.0011111111111111111"/>
-      <inertia ixx="1.736111111111111e-06" ixy="0" ixz="0" iyy="1.736111111111111e-06" iyz="0" izz="1.736111111111111e-06"/>
-    </inertial>
-  </link>
-  <link name="spine_link_5">
-    <inertial>
-      <origin rpy="0 0 0" xyz="-0.125 0 0"/>
-      <mass value="0.1111111111111111"/>
-      <inertia ixx="0.0001736111111111111" ixy="0" ixz="0" iyy="0.0001736111111111111" iyz="0" izz="0.0001736111111111111"/>
-    </inertial>
-    <visual>
-      <origin rpy="0 0 0" xyz="-0.125 0 0"/>
-      <geometry>
-        <sphere radius="0.0625"/>
-      </geometry>
-      <material name="body_material"/>
-    </visual>
-    <visual>
-      <origin rpy="0 0 0" xyz="-0.0625 0 0"/>
-      <geometry>
-        <box size="0.125 0.0125 0.00625"/>
-      </geometry>
-    </visual>
-    <collision>
-      <origin rpy="0 0 0" xyz="-0.125 0 0"/>
-      <geometry>
-        <sphere radius="0.0625"/>
-      </geometry>
-    </collision>
-  </link>
-  <joint name="spine_lateral_joint_5" type="revolute">
-    <origin rpy="1.570795 0 0" xyz="-0.125 0 0"/>
-    <axis xyz="0 0 1"/>
-    <parent link="spine_link_4"/>
-    <child link="spine_connection_5"/>
-    <dynamics damping="0.01" friction="0.01"/>
-    <limit effort="30" lower="-1.570795" upper="1.570795" velocity="1.0"/>
-  </joint>
-  <joint name="spine_dorsal_joint_5" type="revolute">
-    <origin rpy="-1.570795 0 0" xyz="0 0 0"/>
-    <axis xyz="0 0 1"/>
-    <parent link="spine_connection_5"/>
-    <child link="spine_link_5"/>
-    <dynamics damping="0.01" friction="0.01"/>
-    <limit effort="30" lower="-0.39269875" upper="0.39269875" velocity="1.0"/>
-  </joint>
-  <link name="spine_connection_6">
-    <inertial>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <mass value="0.0011111111111111111"/>
-      <inertia ixx="1.736111111111111e-06" ixy="0" ixz="0" iyy="1.736111111111111e-06" iyz="0" izz="1.736111111111111e-06"/>
-    </inertial>
-  </link>
-  <link name="spine_link_6">
-    <inertial>
-      <origin rpy="0 0 0" xyz="-0.125 0 0"/>
-      <mass value="0.1111111111111111"/>
-      <inertia ixx="0.0001736111111111111" ixy="0" ixz="0" iyy="0.0001736111111111111" iyz="0" izz="0.0001736111111111111"/>
-    </inertial>
-    <visual>
-      <origin rpy="0 0 0" xyz="-0.125 0 0"/>
-      <geometry>
-        <sphere radius="0.0625"/>
-      </geometry>
-      <material name="body_material"/>
-    </visual>
-    <visual>
-      <origin rpy="0 0 0" xyz="-0.0625 0 0"/>
-      <geometry>
-        <box size="0.125 0.0125 0.00625"/>
-      </geometry>
-    </visual>
-    <collision>
-      <origin rpy="0 0 0" xyz="-0.125 0 0"/>
-      <geometry>
-        <sphere radius="0.0625"/>
-      </geometry>
-    </collision>
-  </link>
-  <joint name="spine_lateral_joint_6" type="revolute">
-    <origin rpy="1.570795 0 0" xyz="-0.125 0 0"/>
-    <axis xyz="0 0 1"/>
-    <parent link="spine_link_5"/>
-    <child link="spine_connection_6"/>
-    <dynamics damping="0.01" friction="0.01"/>
-    <limit effort="30" lower="-1.570795" upper="1.570795" velocity="1.0"/>
-  </joint>
-  <joint name="spine_dorsal_joint_6" type="revolute">
-    <origin rpy="-1.570795 0 0" xyz="0 0 0"/>
-    <axis xyz="0 0 1"/>
-    <parent link="spine_connection_6"/>
-    <child link="spine_link_6"/>
-    <dynamics damping="0.01" friction="0.01"/>
-    <limit effort="30" lower="-0.39269875" upper="0.39269875" velocity="1.0"/>
-  </joint>
-  <link name="spine_connection_7">
-    <inertial>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <mass value="0.0011111111111111111"/>
-      <inertia ixx="1.736111111111111e-06" ixy="0" ixz="0" iyy="1.736111111111111e-06" iyz="0" izz="1.736111111111111e-06"/>
-    </inertial>
-  </link>
-  <link name="spine_link_7">
-    <inertial>
-      <origin rpy="0 0 0" xyz="-0.125 0 0"/>
-      <mass value="0.1111111111111111"/>
-      <inertia ixx="0.0001736111111111111" ixy="0" ixz="0" iyy="0.0001736111111111111" iyz="0" izz="0.0001736111111111111"/>
-    </inertial>
-    <visual>
-      <origin rpy="0 0 0" xyz="-0.125 0 0"/>
-      <geometry>
-        <sphere radius="0.0625"/>
-      </geometry>
-      <material name="body_material"/>
-    </visual>
-    <visual>
-      <origin rpy="0 0 0" xyz="-0.0625 0 0"/>
-      <geometry>
-        <box size="0.125 0.0125 0.00625"/>
-      </geometry>
-    </visual>
-    <collision>
-      <origin rpy="0 0 0" xyz="-0.125 0 0"/>
-      <geometry>
-        <sphere radius="0.0625"/>
-      </geometry>
-    </collision>
-  </link>
-  <joint name="spine_lateral_joint_7" type="revolute">
-    <origin rpy="1.570795 0 0" xyz="-0.125 0 0"/>
-    <axis xyz="0 0 1"/>
-    <parent link="spine_link_6"/>
-    <child link="spine_connection_7"/>
-    <dynamics damping="0.01" friction="0.01"/>
-    <limit effort="30" lower="-1.570795" upper="1.570795" velocity="1.0"/>
-  </joint>
-  <joint name="spine_dorsal_joint_7" type="revolute">
-    <origin rpy="-1.570795 0 0" xyz="0 0 0"/>
-    <axis xyz="0 0 1"/>
-    <parent link="spine_connection_7"/>
-    <child link="spine_link_7"/>
-    <dynamics damping="0.01" friction="0.01"/>
-    <limit effort="30" lower="-0.39269875" upper="0.39269875" velocity="1.0"/>
-  </joint>
-  <link name="spine_connection_8">
-    <inertial>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <mass value="0.0011111111111111111"/>
-      <inertia ixx="1.736111111111111e-06" ixy="0" ixz="0" iyy="1.736111111111111e-06" iyz="0" izz="1.736111111111111e-06"/>
-    </inertial>
-  </link>
-  <link name="spine_link_8">
-    <inertial>
-      <origin rpy="0 0 0" xyz="-0.125 0 0"/>
-      <mass value="0.1111111111111111"/>
-      <inertia ixx="0.0001736111111111111" ixy="0" ixz="0" iyy="0.0001736111111111111" iyz="0" izz="0.0001736111111111111"/>
-    </inertial>
-    <visual>
-      <origin rpy="0 0 0" xyz="-0.125 0 0"/>
-      <geometry>
-        <sphere radius="0.0625"/>
-      </geometry>
-      <material name="body_material"/>
-    </visual>
-    <visual>
-      <origin rpy="0 0 0" xyz="-0.0625 0 0"/>
-      <geometry>
-        <box size="0.125 0.0125 0.00625"/>
-      </geometry>
-    </visual>
-    <collision>
-      <origin rpy="0 0 0" xyz="-0.125 0 0"/>
-      <geometry>
-        <sphere radius="0.0625"/>
-      </geometry>
-    </collision>
-  </link>
-  <joint name="spine_lateral_joint_8" type="revolute">
-    <origin rpy="1.570795 0 0" xyz="-0.125 0 0"/>
-    <axis xyz="0 0 1"/>
-    <parent link="spine_link_7"/>
-    <child link="spine_connection_8"/>
-    <dynamics damping="0.01" friction="0.01"/>
-    <limit effort="30" lower="-1.570795" upper="1.570795" velocity="1.0"/>
-  </joint>
-  <joint name="spine_dorsal_joint_8" type="revolute">
-    <origin rpy="-1.570795 0 0" xyz="0 0 0"/>
-    <axis xyz="0 0 1"/>
-    <parent link="spine_connection_8"/>
-    <child link="spine_link_8"/>
-    <dynamics damping="0.01" friction="0.01"/>
-    <limit effort="30" lower="-0.39269875" upper="0.39269875" velocity="1.0"/>
-  </joint>
   <link name="right_girdle_connection_1">
     <inertial>
       <origin rpy="0 0 0" xyz="0 0 0"/>
-      <mass value="0.0001111111111111111"/>
-      <inertia ixx="1.929012345679012e-08" ixy="0" ixz="0" iyy="1.929012345679012e-08" iyz="0" izz="1.929012345679012e-08"/>
+      <mass value="0.0003333333333333333"/>
+      <inertia ixx="5.787037037037036e-08" ixy="0" ixz="0" iyy="5.787037037037036e-08" iyz="0" izz="5.787037037037036e-08"/>
     </inertial>
   </link>
   <!--NOTE: currently leg joints have symmetrical limits, to avoid problems deriving from having reflected reference frames-->
@@ -475,8 +181,8 @@
   <link name="right_leg">
     <inertial>
       <origin rpy="0 0 0" xyz="0.16666666666666666 0 0"/>
-      <mass value="0.01111111111111111"/>
-      <inertia ixx="1.929012345679012e-06" ixy="0" ixz="0" iyy="1.929012345679012e-06" iyz="0" izz="1.929012345679012e-06"/>
+      <mass value="0.03333333333333333"/>
+      <inertia ixx="5.787037037037036e-06" ixy="0" ixz="0" iyy="5.787037037037036e-06" iyz="0" izz="5.787037037037036e-06"/>
     </inertial>
     <visual>
       <origin rpy="0 0 0" xyz="0.16666666666666666 0 0"/>
@@ -510,8 +216,8 @@
   <link name="left_girdle_connection_1">
     <inertial>
       <origin rpy="0 0 0" xyz="0 0 0"/>
-      <mass value="0.0001111111111111111"/>
-      <inertia ixx="1.929012345679012e-08" ixy="0" ixz="0" iyy="1.929012345679012e-08" iyz="0" izz="1.929012345679012e-08"/>
+      <mass value="0.0003333333333333333"/>
+      <inertia ixx="5.787037037037036e-08" ixy="0" ixz="0" iyy="5.787037037037036e-08" iyz="0" izz="5.787037037037036e-08"/>
     </inertial>
   </link>
   <!--NOTE: currently leg joints have symmetrical limits, to avoid problems deriving from having reflected reference frames-->
@@ -526,8 +232,8 @@
   <link name="left_leg">
     <inertial>
       <origin rpy="0 0 0" xyz="0.16666666666666666 0 0"/>
-      <mass value="0.01111111111111111"/>
-      <inertia ixx="1.929012345679012e-06" ixy="0" ixz="0" iyy="1.929012345679012e-06" iyz="0" izz="1.929012345679012e-06"/>
+      <mass value="0.03333333333333333"/>
+      <inertia ixx="5.787037037037036e-06" ixy="0" ixz="0" iyy="5.787037037037036e-06" iyz="0" izz="5.787037037037036e-06"/>
     </inertial>
     <visual>
       <origin rpy="0 0 0" xyz="0.16666666666666666 0 0"/>
