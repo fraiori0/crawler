@@ -1,0 +1,4 @@
+First trial with a tentative value of the gain for the spinal joints.
+
+Controller, except at the start, kind of work, in that it tries to keep a value near zero of the 
+derivative of the graph of eCOM

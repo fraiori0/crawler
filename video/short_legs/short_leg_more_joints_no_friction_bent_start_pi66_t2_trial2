@@ -1,0 +1,6 @@
+Kp = model.generate_Kp(Kp_lat=4000., Kp_r_abd=14000., Kp_l_abd=12000., Kp_flex=10000.)
+Kv = model.generate_Kv(Kv_lat=2000., Kv_r_abd=4000., Kv_l_abd=7000., Kv_flex=7000.)
+7 joints, increase of both Kp and Kv by 1.2^n along the spinal lateral joints
+
+Saved the values because it seems to perform well.
+Problem is that the controller is not really working properly in this one

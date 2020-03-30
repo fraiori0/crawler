@@ -8,4 +8,5 @@ then
     echo "correctly checked the URDF"
     conda activate ./envs
     python3 sim_crawler_experiment.py
+    conda deactivate
 fi

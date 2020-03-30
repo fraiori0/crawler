@@ -1,0 +1,3 @@
+- first part, the body straigthen to avoid that the COM move along y-axis
+- second part, rotation happens around the contact-joint. This is what seems to bring the body forward. It is not due to the body pushing since there's no friction, but to the conservation of a.m. NOTE: it might be that the dynamics of the body help bringing the body forward, instad of just pushing on the ground
+- instability

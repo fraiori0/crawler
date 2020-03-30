@@ -8,12 +8,12 @@
   <!--CONSTANTS-->
   <xacro:property name="PI" value="3.14159" />
 
-  <xacro:property name="BODY_LENGTH" value="1"/>
+  <xacro:property name="BODY_LENGTH" value="0.5"/>
   <xacro:property name="BODY_MASS" value="1"/>
 
-  <xacro:property name="SPINE_SEGMENTS_NUMBER" value="2" />
+  <xacro:property name="SPINE_SEGMENTS_NUMBER" value="7" />
 
-  <xacro:property name="SPINE_SEGMENT_LENGTH" value="${BODY_LENGTH/SPINE_SEGMENTS_NUMBER}" />
+  <xacro:property name="SPINE_SEGMENT_LENGTH" value="${BODY_LENGTH/(SPINE_SEGMENTS_NUMBER)}" />
   <xacro:property name="SPINE_DORSAL_BENDING_LIMIT" value="${PI/8}" />
   <xacro:property name="SPINE_LATERAL_BENDING_LIMIT" value="${PI/2}" />
 
@@ -22,9 +22,9 @@
   <xacro:property name="BODY_SPHERE_INERTIA" value="${2*BODY_SPHERE_MASS*BODY_SPHERE_RADIUS*BODY_SPHERE_RADIUS/5}" />
 
   <xacro:property name="GIRDLE_WIDTH" value="${BODY_LENGTH/16}" />
-  <xacro:property name="GIRDLE_LENGTH" value="${SPINE_SEGMENT_LENGTH/2}" />
+  <xacro:property name="GIRDLE_LENGTH" value="${BODY_LENGTH/10}" />
 
-  <xacro:property name="LEG_LENGTH" value="${BODY_LENGTH/6}" />
+  <xacro:property name="LEG_LENGTH" value="${BODY_LENGTH/8}" />
   <xacro:property name="LEG_TIP_MASS" value="${BODY_SPHERE_MASS/10}" />
   <xacro:property name="LEG_TIP_RADIUS" value="${BODY_SPHERE_RADIUS/3}" />
   <xacro:property name="LEG_TIP_INERTIA" value="${2*LEG_TIP_MASS*LEG_TIP_RADIUS*LEG_TIP_RADIUS/5}" />
@@ -35,10 +35,10 @@
   <xacro:property name="GIRDLE_ABDUCTION_LIMIT" value="${PI/2}" />
   <xacro:property name="GIRDLE_ADDUCTION_LIMIT" value="${PI/2}" />
 
-  <xacro:property name="JOINT_DAMPING" value="0.01" />
-  <xacro:property name="JOINT_FRICTION" value="0.01" />
+  <xacro:property name="JOINT_DAMPING" value="0.001" />
+  <xacro:property name="JOINT_FRICTION" value="0.001" />
 
-  <xacro:property name="VISUAL_BOX_RATIO" value="0.1" />
+  <xacro:property name="VISUAL_BOX_RATIO" value="0.05" />
 
 
 
@@ -81,7 +81,7 @@
       <visual>
         <origin xyz="${-SPINE_SEGMENT_LENGTH/2} 0 0" rpy="0 0 0"/>
         <geometry>
-          <box size="${SPINE_SEGMENT_LENGTH} ${VISUAL_BOX_RATIO*SPINE_SEGMENT_LENGTH} ${VISUAL_BOX_RATIO*GIRDLE_WIDTH}"/>
+          <box size="${SPINE_SEGMENT_LENGTH} ${VISUAL_BOX_RATIO*SPINE_SEGMENT_LENGTH} ${VISUAL_BOX_RATIO*SPINE_SEGMENT_LENGTH}"/>
         </geometry>
       </visual>
       <collision>
@@ -203,7 +203,7 @@
    <visual>
      <origin xyz="0 0 0" rpy="0 0 0"/>
      <geometry>
-       <box size="${2*GIRDLE_LENGTH} ${VISUAL_BOX_RATIO*2*GIRDLE_LENGTH} ${VISUAL_BOX_RATIO*2*GIRDLE_WIDTH}"/>
+       <box size="${2*GIRDLE_LENGTH} ${VISUAL_BOX_RATIO*2*GIRDLE_LENGTH} ${VISUAL_BOX_RATIO*2*GIRDLE_LENGTH}"/>
      </geometry>
    </visual>
    <collision>
@@ -243,7 +243,7 @@
     <visual>
       <origin xyz="${-SPINE_SEGMENT_LENGTH/2} 0 0" rpy="0 0 0"/>
       <geometry>
-        <box size="${SPINE_SEGMENT_LENGTH} ${VISUAL_BOX_RATIO*SPINE_SEGMENT_LENGTH} ${VISUAL_BOX_RATIO*GIRDLE_WIDTH}"/>
+        <box size="${SPINE_SEGMENT_LENGTH} ${VISUAL_BOX_RATIO*SPINE_SEGMENT_LENGTH} ${VISUAL_BOX_RATIO*SPINE_SEGMENT_LENGTH}"/>
       </geometry>
     </visual>
     <collision>

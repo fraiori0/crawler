@@ -79,7 +79,7 @@ class Model_State:
         self.joint_indices_q = list(range(self.nqb,self.nq))
         self.joint_indices_qd = list(range(self.nqbd,self.nqd))
         ###
-        self.low_pass = Discrete_Low_Pass(dim = self.nqd,dt=self.dt,fc=100)
+        self.low_pass = Discrete_Low_Pass(dim = self.nqd,dt=self.dt,fc=50)
     
     def set_low_pass(self, fc):
         self.low_pass = Discrete_Low_Pass(dim = self.nqd,dt=self.dt,fc=fc)
@@ -123,10 +123,10 @@ class Crawler:
         ### PHYSICAL PROPERTIES AND URDF ###
         self.scale=1
         #NOTE: Properties in this block of code must be manually matched to those defined in the Xacro file
-        self.spine_segments         = 8
-        self.body_length            = self.scale * 1
-        self.spine_segment_length   = self.scale * self.body_length/self.spine_segments
-        self.leg_length             = self.scale * self.body_length/6
+        self.spine_segments         = 7
+        self.body_length            = self.scale * 0.5
+        self.spine_segment_length   = self.scale * self.body_length/(self.spine_segments)
+        self.leg_length             = self.scale * self.body_length/8
         self.body_sphere_radius     = self.scale * self.body_length/16
         self.foot_sphere_radius     = self.scale * self.body_sphere_radius/3
         #
@@ -531,14 +531,19 @@ class Crawler:
         qa = self.integrator_lateral_qa.integrate(qda)
         return qa,qda, qdda
     
-    def generate_abduction_trajectory(self, theta0, thetaf, ti, t_stance):
+    def generate_abduction_trajectory(self, theta0, thetaf, ti, t_stance, cos_fun=True):
         #ti = time from start of the walking locomotion, t_stance = total (desired) stance phase duration
-        theta = (theta0+thetaf)/2 + (theta0-thetaf)*cos(pi*ti/t_stance)/2
-        thetad = -pi*(theta0-thetaf)*sin(pi*ti/t_stance)/(2*t_stance)
-        thetadd = -pi*pi*(theta0-thetaf)*cos(pi*ti/t_stance)/(2*t_stance*t_stance)
+        if cos_fun:
+            theta = (theta0+thetaf)/2 + (theta0-thetaf)*cos(pi*ti/t_stance)/2
+            thetad = -pi*(theta0-thetaf)*sin(pi*ti/t_stance)/(2*t_stance)
+            thetadd = -pi*pi*(theta0-thetaf)*cos(pi*ti/t_stance)/(2*t_stance*t_stance)
+        else:
+            theta = theta0 + (thetaf-theta0)*ti/t_stance
+            thetad = (thetaf-theta0)/t_stance
+            thetadd = 0
         return theta, thetad, thetadd
     
-    def generate_joints_trajectory(self, theta0, thetaf, ti, t_stance, qa_des, qda_des, qdda_des):
+    def generate_joints_trajectory(self, theta0, thetaf, ti, t_stance, qa_des, qda_des, qdda_des, cos_abd=True):
         #ti = time from start of the walking locomotion, t_stance = total (desired) stance phase duration
         # RL=0 if right leg stance, 1 if left leg stance (stance leg is the one with the constraied foot)
         # q[3:6] must be a quaternion
@@ -546,7 +551,7 @@ class Crawler:
         qd_des = self.state.qd.copy()
         qdd_des = self.state.qdd.copy()
         # Right leg abduction trajectory
-        right_abd = self.generate_abduction_trajectory(theta0,thetaf,ti,t_stance)
+        right_abd = self.generate_abduction_trajectory(theta0,thetaf,ti,t_stance, cos_fun=cos_abd)
         q_des[(7 + self.control_indices[1][0])] = right_abd[0]
         qd_des[(6 + self.control_indices[1][0])] = right_abd[1]
         qdd_des[(6 + self.control_indices[1][0])] = right_abd[2]
@@ -557,18 +562,56 @@ class Crawler:
         q_des[(7 + self.control_indices[2][0])] = -(left_abd[0])
         qd_des[(6 + self.control_indices[2][0])] = -(left_abd[1])
         qdd_des[(6 + self.control_indices[2][0])] = -(left_abd[2])
-        # Right leg flexion
-        q_des[(7 + self.control_indices[1][1])] = self.neutral_contact_flexion_angle
-        qd_des[(6 + self.control_indices[1][1])] = 0
-        qdd_des[(6 + self.control_indices[1][1])] = 0
-        # Right leg flexion
-        q_des[(7 + self.control_indices[2][1])] = -self.neutral_contact_flexion_angle
-        qd_des[(6 + self.control_indices[2][1])] = 0
-        qdd_des[(6 + self.control_indices[2][1])] = 0
+        # # Right leg flexion
+        # q_des[(7 + self.control_indices[1][1])] = self.neutral_contact_flexion_angle
+        # qd_des[(6 + self.control_indices[1][1])] = 0
+        # qdd_des[(6 + self.control_indices[1][1])] = 0
+        # # Left leg flexion
+        # q_des[(7 + self.control_indices[2][1])] = -self.neutral_contact_flexion_angle
+        # qd_des[(6 + self.control_indices[2][1])] = 0
+        # qdd_des[(6 + self.control_indices[2][1])] = 0
         # Lateral spinal joints
         q_des[self.mask_act_shifted] = qa_des #np.array([1]*len(self.mask_act_shifted))*0.1*sin(ti*pi)
         qd_des[self.mask_act] = qda_des #np.array([1]*len(self.mask_act_shifted))*pi*0.1*cos(ti*pi)
         qdd_des[self.mask_act] = qdda_des #np.array([1]*len(self.mask_act_shifted))*(-pi*pi*0.1*sin(ti*pi))
+        # q_des[self.mask_act_shifted] = np.array([1]*len(self.mask_act_shifted))*0.1*sin(ti*pi)
+        # qd_des[self.mask_act] = np.array([1]*len(self.mask_act_shifted))*pi*0.1*cos(ti*pi)
+        # qdd_des[self.mask_act] = np.array([1]*len(self.mask_act_shifted))*(-pi*pi*0.1*sin(ti*pi))
+        # position error, base is set to 0
+        e = np.concatenate(([0.0,0.0,0.0,0.0,0.0,0.0],(q_des[self.mask_joints_shifted] - self.state.q[self.mask_joints_shifted])))
+        return q_des, qd_des, qdd_des, e
+    
+    def generate_joints_trajectory_stop(self, theta0, thetaf, ti, t_stance, qa_des, qda_des, qdda_des):
+        #ti = time from start of the walking locomotion, t_stance = total (desired) stance phase duration
+        # RL=0 if right leg stance, 1 if left leg stance (stance leg is the one with the constraied foot)
+        # q[3:6] must be a quaternion
+        q_des = self.state.q.copy()
+        qd_des = self.state.qd.copy()
+        qdd_des = self.state.qdd.copy()
+        # Right leg abduction trajectory
+        right_abd = self.generate_abduction_trajectory(theta0,thetaf,t_stance,t_stance)
+        q_des[(7 + self.control_indices[1][0])] = right_abd[0]
+        qd_des[(6 + self.control_indices[1][0])] = right_abd[1]
+        qdd_des[(6 + self.control_indices[1][0])] = 0
+        # Left leg abdution trajectory, 
+            # same as the right leg but translated backward temporally and with an opposite sign 
+            # (see joint's reference frame)
+        left_abd = self.generate_abduction_trajectory(theta0,thetaf,(t_stance-t_stance),t_stance)
+        q_des[(7 + self.control_indices[2][0])] = -(left_abd[0])
+        qd_des[(6 + self.control_indices[2][0])] = -(left_abd[1])
+        qdd_des[(6 + self.control_indices[2][0])] = 0
+        # # Right leg flexion
+        # q_des[(7 + self.control_indices[1][1])] = self.neutral_contact_flexion_angle
+        # qd_des[(6 + self.control_indices[1][1])] = 0
+        # qdd_des[(6 + self.control_indices[1][1])] = 0
+        # # Left leg flexion
+        # q_des[(7 + self.control_indices[2][1])] = -self.neutral_contact_flexion_angle
+        # qd_des[(6 + self.control_indices[2][1])] = 0
+        # qdd_des[(6 + self.control_indices[2][1])] = 0
+        # Lateral spinal joints
+        q_des[self.mask_act_shifted] = qa_des
+        qd_des[self.mask_act] = qda_des
+        qdd_des[self.mask_act] = qdda_des
         # position error, base is set to 0
         e = np.concatenate(([0.0,0.0,0.0,0.0,0.0,0.0],(q_des[self.mask_joints_shifted] - self.state.q[self.mask_joints_shifted])))
         return q_des, qd_des, qdd_des, e
@@ -608,7 +651,7 @@ class Crawler:
         eta = self.pin_data_eta.tau[self.mask_qd_pin_to_pyb] - self.state.tau
         # INVERSE DYNAMICS WITH QDDA
         pin.rnea(self.pinmodel,self.pin_data,q_pin,qd_pin,qdd_des_pin)
-        tau_act = self.pin_data.tau[self.mask_qd_pin_to_pyb] - eta
+        tau_act = self.pin_data.tau[self.mask_qd_pin_to_pyb] + eta
         #print("TAU_EXACT:  ", np.round(tau_exact,4))
         tau_act = np.reshape(tau_act, (tau_act.shape[0],1))
         #
@@ -686,19 +729,36 @@ class Crawler:
                 force=tau[joint_i + self.state.nqbd]
                 )
             #print("joint_i: ", joint_i, "tau %d: " %(joint_i + self.state.nqbd), tau[joint_i + self.state.nqbd])
+        # p.setJointMotorControl2(
+        #         self.Id, 
+        #         self.control_indices[1][1], 
+        #         p.VELOCITY_CONTROL,
+        #         targetVelocity=0,
+        #         force=1
+        #         )
+        # p.setJointMotorControl2(
+        #         self.Id, 
+        #         self.control_indices[2][1], 
+        #         p.VELOCITY_CONTROL,
+        #         targetVelocity=0,
+        #         force=1
+        #         )
         return tau
     
     def generate_Kp(self, Kp_lat, Kp_r_abd, Kp_l_abd, Kp_flex):
         nlat_joints = (self.state.nqd-6-4)//2
-        Kp_lat_multiplier = list(range(1,1+(nlat_joints//2))) + list(reversed(range(1, 1+(nlat_joints+1)//2)))
         Kp_spinal_list = list()
+        #Kp_lat_multiplier = list(range(1,1+(nlat_joints//2))) + list(reversed(range(1, 1+(nlat_joints+1)//2)))
         #If the next line is not commented the lateral joints will have decreasing values
         # starting from the girdle, otherwise they will have the max value at the center of the body
         # If the foot act as fixed contraint leave this line uncommented.
         # Kp_lat is always the minimum gain
-        Kp_lat_multiplier = list(reversed(range(1,nlat_joints+1)))
-        for val in Kp_lat_multiplier:
-            Kp_spinal_list.append(val*Kp_lat)   # i-th lateral joint
+        # Kp_lat_multiplier = list(reversed(range(1,nlat_joints+1)))
+        # for val in Kp_lat_multiplier:
+        #     Kp_spinal_list.append(val*Kp_lat)   # i-th lateral joint
+        #     Kp_spinal_list.append(0)            # i-th dorsal joint
+        for i in reversed(range(1,nlat_joints+1)):
+            Kp_spinal_list.append(Kp_lat*((1.2)**i))   # i-th lateral joint
             Kp_spinal_list.append(0)            # i-th dorsal joint
         Kp_diag_list = (
             [0,0,0,0,0,0] +
@@ -712,15 +772,18 @@ class Crawler:
 
     def generate_Kv(self, Kv_lat, Kv_r_abd, Kv_l_abd, Kv_flex):
         nlat_joints = (self.state.nqd-6-4)//2
-        Kv_lat_multiplier = list(range(1,1+(nlat_joints//2))) + list(reversed(range(1, 1+(nlat_joints+1)//2)))
         Kv_spinal_list = list()
+        #Kv_lat_multiplier = list(range(1,1+(nlat_joints//2))) + list(reversed(range(1, 1+(nlat_joints+1)//2)))
         #If the next line is not commented the lateral joints will have decreasing values
         # starting from the girdle, otherwise they will have the max value at the center of the body
         # If the foot act as fixed contraint leave this line uncommented.
         # Kp_lat is always the minimum gain
-        Kv_lat_multiplier = list(reversed(range(1,nlat_joints+1)))
-        for val in Kv_lat_multiplier:
-            Kv_spinal_list.append(val*Kv_lat)   # i-th lateral joint
+        # Kv_lat_multiplier = list(reversed(range(1,nlat_joints+1)))
+        # for val in Kv_lat_multiplier:
+        #     Kv_spinal_list.append(val*Kv_lat)   # i-th lateral joint
+        #     Kv_spinal_list.append(0)            # i-th dorsal joint
+        for i in reversed(range(1,nlat_joints+1)):
+            Kv_spinal_list.append(Kv_lat*((1.2)**i))   # i-th lateral joint
             Kv_spinal_list.append(0)            # i-th dorsal joint
         Kv_diag_list = (
             [0,0,0,0,0,0] +
@@ -852,6 +915,14 @@ class Crawler:
             velocityGain = velocityGain)
         return
     
+    def set_bent_position(self, theta_rg, theta_lg, A_lat, theta_0_lat, lambda_lat):
+        #Body is set using traveling wave equation for t=0
+        for i in self.control_indices[0]:
+            theta_lat_i = A_lat*sin(2*pi*i/lambda_lat + theta_0_lat)
+            p.resetJointState(self.Id, i, theta_lat_i)
+        p.resetJointState(self.Id, self.control_indices[1][0],theta_rg)
+        p.resetJointState(self.Id, self.control_indices[2][0],theta_lg)
+        return
     # def generate_velocityGain_array_lateral(self, k_last):
     #     # The gain is scaled linearly along the spine, with the maximum in the middle;
     #         # the input k_last correspond to the minimum value of the gain (first and last joint)
