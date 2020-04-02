@@ -8,10 +8,10 @@
   <!--CONSTANTS-->
   <xacro:property name="PI" value="3.14159" />
 
-  <xacro:property name="BODY_LENGTH" value="0.5"/>
+  <xacro:property name="BODY_LENGTH" value="0.3"/>
   <xacro:property name="BODY_MASS" value="1"/>
 
-  <xacro:property name="SPINE_SEGMENTS_NUMBER" value="7" />
+  <xacro:property name="SPINE_SEGMENTS_NUMBER" value="5" />
 
   <xacro:property name="SPINE_SEGMENT_LENGTH" value="${BODY_LENGTH/(SPINE_SEGMENTS_NUMBER)}" />
   <xacro:property name="SPINE_DORSAL_BENDING_LIMIT" value="${PI/8}" />
@@ -29,7 +29,7 @@
   <xacro:property name="LEG_TIP_RADIUS" value="${BODY_SPHERE_RADIUS/3}" />
   <xacro:property name="LEG_TIP_INERTIA" value="${2*LEG_TIP_MASS*LEG_TIP_RADIUS*LEG_TIP_RADIUS/5}" />
 
-  <xacro:property name="GIRDLE_FLEXION_LIMIT" value="${PI/2}" />
+  <xacro:property name="GIRDLE_FLEXION_LIMIT" value="${PI/6}" />
   <xacro:property name="GIRDLE_EXTENSION_LIMIT" value="${PI/6}" />
 
   <xacro:property name="GIRDLE_ABDUCTION_LIMIT" value="${PI/2}" />

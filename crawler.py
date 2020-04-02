@@ -31,7 +31,7 @@ class Integrator_Forward_Euler:
     def integrate(self,xd):
         #xd should be passed as NUMPY ARRAY
         self.x = self.x + xd*self.dt
-        return self.x
+        return self.x.copy()
     def reset(self, x0):
         self.x = np.array(x0)
 
@@ -123,8 +123,8 @@ class Crawler:
         ### PHYSICAL PROPERTIES AND URDF ###
         self.scale=1
         #NOTE: Properties in this block of code must be manually matched to those defined in the Xacro file
-        self.spine_segments         = 7
-        self.body_length            = self.scale * 0.5
+        self.spine_segments         = 5
+        self.body_length            = self.scale * 0.3
         self.spine_segment_length   = self.scale * self.body_length/(self.spine_segments)
         self.leg_length             = self.scale * self.body_length/8
         self.body_sphere_radius     = self.scale * self.body_length/16
@@ -176,6 +176,8 @@ class Crawler:
         self.mask_nact_nobase = list(np.arange(1, self.num_joints-4,2))+list(range(self.num_joints-4,self.num_joints))
         self.mask_right_girdle = [6+self.num_joints-4, 6+self.num_joints-3]
         self.mask_left_girdle = [6+self.num_joints-2, 6+self.num_joints-1]
+        self.mask_both_legs = list(range(6+self.num_joints-4,6+self.num_joints))
+        self.mask_both_legs_shifted = list(range(7+self.num_joints-4,7+self.num_joints))
         # Masks for pinocchio arrays
             # NOTE: PINOCCHIO ORDER THE MODEL AS (BASE, LEFT GIRDLE, RIGHT GIRDLE, SPINE)
         self.mask_act_q_pin = list(np.arange(11, 7+self.num_joints,2))
@@ -217,9 +219,21 @@ class Crawler:
         self.integrator_lateral_qa = Integrator_Forward_Euler(self.dt_simulation,[0]*len(self.mask_act))
         ###PINOCCHIO INITIALIZATION AND VARIABLES
         self.pinmodel = pin.buildModelFromUrdf("%s/crawler.urdf" % urdf_path,pin.JointModelFreeFlyer())
+        self.pinmodel_zerog = pin.buildModelFromUrdf("%s/crawler.urdf" % urdf_path,pin.JointModelFreeFlyer())
+        self.pinmodel_zerog.gravity = pin.Motion.Zero()
+        self.pinmodel_fixed = pin.buildModelFromUrdf("%s/crawler.urdf" % urdf_path)
+        self.pinmodel_fixed_zerog = pin.buildModelFromUrdf("%s/crawler.urdf" % urdf_path)
+        self.pinmodel_fixed_zerog.gravity = pin.Motion.Zero()
         self.pin_data = self.pinmodel.createData()
+        self.pin_data_zerog = self.pinmodel_zerog.createData()
+        self.pin_data_fixed = self.pinmodel_fixed.createData()
+        self.pin_data_fixed_zerog = self.pinmodel_fixed_zerog.createData()
         self.pin_data_eta = self.pinmodel.createData()
         #self.pinmodel.gravity = pin.Motion.Zero()
+        ### LAMBDA FUNCTIONS (to avoid redefining them inside each function)
+        self.trav_wave_theta = lambda t,i,A,f,lamb,th0: A*np.sin(2*pi*f*t + 2*pi*i/lamb + th0)
+        self.trav_wave_thetad = lambda t,i,A,f,lamb,th0: A*2*pi*f*np.cos(2*pi*f*t + 2*pi*i/lamb + th0)
+        self.trav_wave_thetadd = lambda t,i,A,f,lamb,th0: -A*2*pi*f*2*pi*f*np.sin(2*pi*f*t + 2*pi*i/lamb + th0)
         
     def set_low_pass_lateral_qa(self, fc, K=1):
         self.low_pass_lateral_qa = Discrete_Low_Pass(
@@ -277,7 +291,7 @@ class Crawler:
     def generate_control_indices(self):
     # this function relies on knowledge of the order of the joints in the crawler model
     # NOTE: if the URDF is modified in ways different than just adding more segments to the spine this function
-        # NEED TO be updated properly
+    # NEED TO be updated properly
         lat_joints_i = tuple(range(0,(self.num_joints-4),2))
         #abduction then flexion 
         r_leg_i = (self.num_joints-4, self.num_joints-3)
@@ -718,17 +732,16 @@ class Crawler:
         else: 
             tau = tau_des
         #flatten control_indices to use for setting torques with a single loop
-        index = [i for index_tuple in self.control_indices for i in index_tuple]
-        # print("tau_des:\n", tau)
-        # print("---->>> INDEX: ", index)
-        for joint_i in index:
+        indexes = [i for index_tuple in self.control_indices for i in index_tuple]
+        for joint_i in indexes:
             p.setJointMotorControl2(
                 self.Id, 
                 joint_i, 
                 p.TORQUE_CONTROL,
                 force=tau[joint_i + self.state.nqbd]
                 )
-            #print("joint_i: ", joint_i, "tau %d: " %(joint_i + self.state.nqbd), tau[joint_i + self.state.nqbd])
+            #print("joint_i: ", joint_i, "tau %d: " %(joint_i + self.state.nqbd), np.round(tau[joint_i + self.state.nqbd],3))
+        # Uncomment to use velocity control on the flexion movement
         # p.setJointMotorControl2(
         #         self.Id, 
         #         self.control_indices[1][1], 
@@ -855,14 +868,18 @@ class Crawler:
             )
         return vGain_list
     
-    def PD_control(self, q_des, fmax_list, pGain_list, vGain_list):
+    def PD_control(self, q_des, fmax_list, pGain_list, vGain_list, include_base=True):
         index = [i for index_tuple in self.control_indices for i in index_tuple]
+        if include_base:
+            increment=self.state.nqbd
+        else:
+            increment=0
         for joint_i in index:
             p.setJointMotorControl2(
                 self.Id, 
                 joint_i, 
                 p.POSITION_CONTROL,
-                targetPosition=q_des[joint_i + self.state.nqbd],
+                targetPosition=q_des[joint_i + increment],
                 force=fmax_list[joint_i],
                 positionGain = pGain_list[joint_i],
                 velocityGain = vGain_list[joint_i]
@@ -915,14 +932,121 @@ class Crawler:
             velocityGain = velocityGain)
         return
     
-    def set_bent_position(self, theta_rg, theta_lg, A_lat, theta_0_lat, lambda_lat):
+    def set_bent_position(self, theta_rg, theta_lg, A_lat, theta_lat_0):
         #Body is set using traveling wave equation for t=0
-        for i in self.control_indices[0]:
-            theta_lat_i = A_lat*sin(2*pi*i/lambda_lat + theta_0_lat)
-            p.resetJointState(self.Id, i, theta_lat_i)
+        n_lat = len(self.control_indices[0])
+        for i, joint_i in enumerate(self.control_indices[0]):
+            theta_lat_i = A_lat*sin(2*pi*(i)/(2*n_lat) + theta_lat_0)
+            p.resetJointState(self.Id, joint_i, theta_lat_i)
         p.resetJointState(self.Id, self.control_indices[1][0],theta_rg)
         p.resetJointState(self.Id, self.control_indices[2][0],theta_lg)
         return
+    
+    def traveling_wave_lateral_trajectory_t(self,t,A,f,lamb,th0):
+        # f = frequency, set to 2*stance_duration (it's the frequency of the walking behaviour)
+        n_lat = len(self.control_indices[0])
+        qa = np.arange(n_lat)
+        qda = np.arange(n_lat)
+        qdda = np.arange(n_lat)
+        qa = self.trav_wave_theta(t,qa,A,f,lamb,th0)
+        qda = self.trav_wave_thetad(t,qda,A,f,lamb,th0)
+        qdda = self.trav_wave_thetadd(t,qdda,A,f,lamb,th0)
+        return qa, qda, qdda
+    
+    def abduction_trajectory_t(self, t, th0, thf, f, th_offset):
+        # f = frequency, set to 1/(2*stance_duration) (it's the frequency of the walking behaviour)
+        # it's almost a duplicate of generate_abduction_trajectory()
+            # it include the offset input, so it's easier to set left and right lef (they differ from pi)
+        theta = (th0+thf)/2 + (th0-thf)*cos(2*pi*f*t + th_offset)/2
+        thetad = -2*pi*f*(th0-thf)*sin(2*pi*f*t + th_offset)/2
+        thetadd = -2*pi*f*2*pi*f*(th0-thf)*cos(2*pi*f*t + th_offset)/2
+        return theta, thetad, thetadd
+    
+    def compose_joints_trajectories_t(self, t, f, A_lat,lamb_lat,th0_lat, th0_abd, thf_abd, include_base = False):
+        # generates an array with the trajectory of all the joints, ordered, at time=t
+        # similar to generate_joints_trajectories()
+        qj = np.empty(self.num_joints)
+        qdj = np.empty(self.num_joints)
+        qddj = np.empty(self.num_joints)
+        # body
+        qa,qda,qdda = self.traveling_wave_lateral_trajectory_t(t,A_lat,f,lamb_lat,th0_lat)
+        qj[self.mask_act_nobase] = qa
+        qdj[self.mask_act_nobase] = qda
+        qddj[self.mask_act_nobase] = qdda
+        # right abduction
+        qra,qdra,qddra = self.abduction_trajectory_t(t,th0_abd,thf_abd,f,th_offset=0)
+        qj[self.control_indices[1][0]] = qra
+        qdj[self.control_indices[1][0]] = qdra
+        qddj[self.control_indices[1][0]] = qddra
+        # left abduction
+        qla,qdla,qddla = self.abduction_trajectory_t(t,th0_abd,thf_abd,f,th_offset=pi)
+        qj[self.control_indices[2][0]] = qla
+        qdj[self.control_indices[2][0]] = qdla
+        qddj[self.control_indices[2][0]] = qddla
+        # If set to True, prepend the current state of the base, stored in self.state
+        if include_base:
+            qj = np.concatenate((self.state.qb, qj))
+            qdj = np.concatenate((self.state.qbd, qdj))
+            qddj = np.concatenate((self.state.qbdd, qddj))
+        return qj, qdj, qddj
+    
+    def trajectory_time_array(self,duration,dt,steps):
+        pass
+    
+    def combined_cosine_fun(self,A,f1,n,t_off=0,delta=0, bias=0):
+        # f1 and f2 must generate a periodic signal with periodicity at least that of the 
+        # walking cycle (f_walk = 1/(2*t_stance))
+        # to simplify this, f1 is considered as equal to f_walk and f2 = n * f1, with n an integer number
+        # Furthermore, to produce symmetric gait, n should be EVEN
+        # t_off represents a global translation in time
+        # delta represent an offset between the two wave, expressed in radians
+        # For sensible value, taken from EMG, see report
+        fun = lambda t: A*cos(2*pi*f1*(t+t_off))*cos(2*pi*n*f1*(t+t_off) + delta) + bias
+        return fun
+    
+    def get_torques_profile_fun(self, A, f1, n, t_off, delta, bias):
+        # Variables should be passed as nested tuple,
+            # packed like control_indices ((spine_lateral),(r_abd,r_flex),(l_abd, l_flex))
+        # Returns a nested tuple (packed like control_indices) of lambda functions, all dependent only on t
+        n_lat = len(self.control_indices[0])
+        if not (n_lat==len(A[0])):
+            print("Error: wrong dimensions of the input")
+            return
+        #lateral joints
+        tau_lat_fun = [0]*n_lat
+        for i,(A_i, f1_i, n_i, t_off_i, delta_i, bias_i) in enumerate(zip(A[0], f1[0], n[0], t_off[0], delta[0], bias[0])):
+            tau_lat_fun[i] = self.combined_cosine_fun(A_i,f1_i,n_i,t_off_i,delta_i,bias_i)
+        #right girdle
+        tau_right_fun = [0]*2
+        for i,(A_i, f1_i, n_i, t_off_i, delta_i, bias_i) in enumerate(zip(A[1], f1[1], n[1], t_off[1], delta[1], bias[1])):
+            tau_right_fun[i] = self.combined_cosine_fun(A_i,f1_i,n_i,t_off_i,delta_i,bias_i)
+        #left girdle
+        tau_left_fun = [0]*2
+        for i,(A_i, f1_i, n_i, t_off_i, delta_i, bias_i) in enumerate(zip(A[2], f1[2], n[2], t_off[2], delta[2], bias[2])):
+            tau_left_fun[i] = self.combined_cosine_fun(A_i,f1_i,n_i,t_off_i,delta_i,bias_i)
+        # convert tuple, to avoid further modification of the output outside this function 
+        tau_lat_fun = tuple(tau_lat_fun)
+        tau_right_fun = tuple(tau_right_fun)
+        tau_left_fun = tuple(tau_left_fun)
+        return (tau_lat_fun, tau_right_fun, tau_left_fun)
+    
+    def generate_torques_time_array(self,tau_array_fun,duration,t0=0, include_base=True):
+        # input should be the output of torques_profile_fun, packed lambda function depending only on t
+        # the output contains, as rows,the value of the torque to apply at each joint (even the passive ones, equal to 0)
+        steps = int(duration/self.dt_simulation)
+        t_array = np.linspace(t0,t0+duration,steps)
+        tau_array = np.zeros((steps,self.num_joints))
+        for i,t in enumerate(t_array):
+            for joint_index,tau_fun_i in zip(self.control_indices[0], tau_array_fun[0]):
+                tau_array[i][joint_index] = tau_fun_i(t)
+            for joint_index,tau_fun_i in zip(self.control_indices[1], tau_array_fun[1]):
+                tau_array[i][joint_index] = tau_fun_i(t)
+            for joint_index,tau_fun_i in zip(self.control_indices[2], tau_array_fun[2]):
+                tau_array[i][joint_index] = tau_fun_i(t)
+        if include_base:
+            tau_array = np.hstack((np.zeros((steps,self.state.nqbd)),tau_array))
+        return tau_array
+    
     # def generate_velocityGain_array_lateral(self, k_last):
     #     # The gain is scaled linearly along the spine, with the maximum in the middle;
     #         # the input k_last correspond to the minimum value of the gain (first and last joint)

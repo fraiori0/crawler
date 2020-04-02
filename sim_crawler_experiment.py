@@ -440,7 +440,7 @@ theta_g0 = pi/6
 theta_gf = -pi/6
 # p.resetJointState(model.Id, model.control_indices[1][0],theta_g0)
 # p.resetJointState(model.Id, model.control_indices[2][0],-theta_gf)
-model.set_bent_position(theta_rg=theta_g0, theta_lg=-theta_gf,A_lat=pi/8,theta_0_lat=-pi/4, lambda_lat=2*model.body_length)
+model.set_bent_position(theta_rg=theta_g0, theta_lg=-theta_gf,A_lat=pi/8,theta_lat_0=-pi/4)
 # Let the model touch the ground plane
 for i in range (240):
     p.stepSimulation()
