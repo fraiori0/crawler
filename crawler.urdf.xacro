@@ -8,23 +8,24 @@
   <!--CONSTANTS-->
   <xacro:property name="PI" value="3.14159" />
 
-  <xacro:property name="BODY_LENGTH" value="0.3"/>
-  <xacro:property name="BODY_MASS" value="1"/>
+  <xacro:property name="BODY_LENGTH" value="0.076"/>
+  <xacro:property name="BODY_MASS" value="0.0028"/>
 
   <xacro:property name="SPINE_SEGMENTS_NUMBER" value="5" />
+  <xacro:property name="N_HALF" value="3" />
 
-  <xacro:property name="SPINE_SEGMENT_LENGTH" value="${BODY_LENGTH/(SPINE_SEGMENTS_NUMBER)}" />
+  <xacro:property name="SPINE_SEGMENT_LENGTH" value="${BODY_LENGTH/(SPINE_SEGMENTS_NUMBER+1)}" />
   <xacro:property name="SPINE_DORSAL_BENDING_LIMIT" value="${PI/8}" />
   <xacro:property name="SPINE_LATERAL_BENDING_LIMIT" value="${PI/2}" />
 
-  <xacro:property name="BODY_SPHERE_MASS" value="${BODY_MASS/(SPINE_SEGMENTS_NUMBER+1)}" /><!-- +1 for the girdle masses-->
+  <xacro:property name="BODY_SPHERE_MASS" value="${BODY_MASS/(SPINE_SEGMENTS_NUMBER+2)}" /><!-- +2 for the girdle masses-->
   <xacro:property name="BODY_SPHERE_RADIUS" value="${BODY_LENGTH/16}" />
   <xacro:property name="BODY_SPHERE_INERTIA" value="${2*BODY_SPHERE_MASS*BODY_SPHERE_RADIUS*BODY_SPHERE_RADIUS/5}" />
 
-  <xacro:property name="GIRDLE_WIDTH" value="${BODY_LENGTH/16}" />
-  <xacro:property name="GIRDLE_LENGTH" value="${BODY_LENGTH/10}" />
+  <xacro:property name="GIRDLE_WIDTH" value="${BODY_LENGTH/14}" />
+  <xacro:property name="GIRDLE_LENGTH" value="${SPINE_SEGMENT_LENGTH/2}" />
 
-  <xacro:property name="LEG_LENGTH" value="${BODY_LENGTH/8}" />
+  <xacro:property name="LEG_LENGTH" value="${BODY_LENGTH/9.4}" />
   <xacro:property name="LEG_TIP_MASS" value="${BODY_SPHERE_MASS/10}" />
   <xacro:property name="LEG_TIP_RADIUS" value="${BODY_SPHERE_RADIUS/3}" />
   <xacro:property name="LEG_TIP_INERTIA" value="${2*LEG_TIP_MASS*LEG_TIP_RADIUS*LEG_TIP_RADIUS/5}" />
@@ -35,12 +36,19 @@
   <xacro:property name="GIRDLE_ABDUCTION_LIMIT" value="${PI/2}" />
   <xacro:property name="GIRDLE_ADDUCTION_LIMIT" value="${PI/2}" />
 
-  <xacro:property name="JOINT_DAMPING" value="0.001" />
-  <xacro:property name="JOINT_FRICTION" value="0.001" />
+  <xacro:property name="JOINT_DAMPING" value="0.0" />
+  <xacro:property name="JOINT_FRICTION" value="0.0" />
+  <xacro:property name="JOINT_MAX_SPEED" value="50.0" />
+  <xacro:property name="JOINT_MAX_EFFORT" value="50.0" />
+
 
   <xacro:property name="VISUAL_BOX_RATIO" value="0.05" />
 
-
+  <!--MASS SCALING-->
+  <!--Values taken from the 5-bars model-->
+  <xacro:property name="KB" value="${(0.456-0.196)/(BODY_LENGTH*0.37)}" />
+  <xacro:property name="KT" value="${(0.218-0.456)/(BODY_LENGTH*0.49)}" />
+  <xacro:property name="M0" value="${(BODY_MASS - KB*SPINE_SEGMENT_LENGTH*(N_HALF*(N_HALF+1))/2 - KT*SPINE_SEGMENT_LENGTH*((SPINE_SEGMENTS_NUMBER-N_HALF)*(SPINE_SEGMENTS_NUMBER-N_HALF+1))/2)/SPINE_SEGMENTS_NUMBER}" />
 
 <!--########### COLORS used for the links ###########-->
 <!--colors are currently implemented as macro because just defining them, as shown in the ROS tutorial, seems not to work-->
@@ -97,7 +105,7 @@
       <parent link="spine_link_${N-1}"/>
       <child link="spine_connection_${N}"/>
       <dynamics damping="${JOINT_DAMPING}" friction="${JOINT_FRICTION}"/>
-      <limit effort="30" velocity="1.0" lower="-${SPINE_LATERAL_BENDING_LIMIT}" upper="${SPINE_LATERAL_BENDING_LIMIT}" />
+      <limit effort="${JOINT_MAX_EFFORT}" velocity="${JOINT_MAX_SPEED}" lower="-${SPINE_LATERAL_BENDING_LIMIT}" upper="${SPINE_LATERAL_BENDING_LIMIT}" />
     </joint>
     <joint name="spine_dorsal_joint_${N}" type="revolute">
       <origin xyz="0 0 0" rpy="${-PI/2} 0 0"/>
@@ -105,7 +113,7 @@
       <parent link="spine_connection_${N}"/>
       <child link="spine_link_${N}"/>
       <dynamics damping="${JOINT_DAMPING}" friction="${JOINT_FRICTION}"/>
-      <limit effort="30" velocity="1.0" lower="-${SPINE_DORSAL_BENDING_LIMIT}" upper="${SPINE_DORSAL_BENDING_LIMIT}" />
+      <limit effort="${JOINT_MAX_EFFORT}" velocity="${JOINT_MAX_SPEED}" lower="-${SPINE_DORSAL_BENDING_LIMIT}" upper="${SPINE_DORSAL_BENDING_LIMIT}" />
     </joint>
   </xacro:macro>
 
@@ -124,7 +132,7 @@
       <parent link="girdle"/>
       <child link="${prefix}_girdle_connection_1"/>
       <dynamics damping="${JOINT_DAMPING}" friction="${JOINT_FRICTION}"/>
-      <limit effort="30" velocity="1.0" lower="-${GIRDLE_ABDUCTION_LIMIT}" upper="${GIRDLE_ABDUCTION_LIMIT}" />
+      <limit effort="${JOINT_MAX_EFFORT}" velocity="${JOINT_MAX_SPEED}" lower="-${GIRDLE_ABDUCTION_LIMIT}" upper="${GIRDLE_ABDUCTION_LIMIT}" />
     </joint>
     <link name="${prefix}_leg">
       <inertial>
@@ -159,7 +167,7 @@
       <parent link="${prefix}_girdle_connection_1"/>
       <child link="${prefix}_leg"/>
       <dynamics damping="${JOINT_DAMPING}" friction="${JOINT_FRICTION}"/>
-      <limit effort="30" velocity="1.0" lower="-${GIRDLE_FLEXION_LIMIT}" upper="${GIRDLE_FLEXION_LIMIT}" />
+      <limit effort="${JOINT_MAX_EFFORT}" velocity="${JOINT_MAX_SPEED}" lower="-${GIRDLE_FLEXION_LIMIT}" upper="${GIRDLE_FLEXION_LIMIT}" />
     </joint>
   </xacro:macro>
 
@@ -176,7 +184,7 @@
   <link name="girdle">
    <inertial>
      <origin xyz="0 0 0" rpy="0 0 0"/>
-     <mass value="${BODY_SPHERE_MASS}"/>
+     <mass value="${2*BODY_SPHERE_MASS}"/>
      <inertia ixx="${2*BODY_SPHERE_INERTIA}"  ixy="0"  ixz="0" 
               iyy="${2*(BODY_SPHERE_INERTIA+GIRDLE_LENGTH*GIRDLE_LENGTH*BODY_SPHERE_MASS)}" iyz="0" 
               izz="${2*(BODY_SPHERE_INERTIA+GIRDLE_LENGTH*GIRDLE_LENGTH*BODY_SPHERE_MASS)}" />
@@ -259,7 +267,7 @@
     <parent link="girdle"/>
     <child link="spine_connection_1"/>
     <dynamics damping="${JOINT_DAMPING}" friction="${JOINT_FRICTION}"/>
-    <limit effort="30" velocity="1.0" lower="-${SPINE_LATERAL_BENDING_LIMIT}" upper="${SPINE_LATERAL_BENDING_LIMIT}" />
+    <limit effort="${JOINT_MAX_EFFORT}" velocity="${JOINT_MAX_SPEED}" lower="-${SPINE_LATERAL_BENDING_LIMIT}" upper="${SPINE_LATERAL_BENDING_LIMIT}" />
   </joint>
   <joint name="spine_dorsal_joint_1" type="revolute">
     <origin xyz="0 0 0" rpy="${-PI/2} 0 0"/>
@@ -267,7 +275,7 @@
     <parent link="spine_connection_1"/>
     <child link="spine_link_1"/>
     <dynamics damping="${JOINT_DAMPING}" friction="${JOINT_FRICTION}"/>
-    <limit effort="30" velocity="1.0" lower="-${SPINE_DORSAL_BENDING_LIMIT}" upper="${SPINE_DORSAL_BENDING_LIMIT}" />
+    <limit effort="${JOINT_MAX_EFFORT}" velocity="${JOINT_MAX_SPEED}" lower="-${SPINE_DORSAL_BENDING_LIMIT}" upper="${SPINE_DORSAL_BENDING_LIMIT}" />
   </joint>
 
   <xacro:spine_segments_loop segments_qty="${SPINE_SEGMENTS_NUMBER}"/>

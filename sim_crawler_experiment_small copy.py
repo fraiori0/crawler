@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import matplotlib
 import time
 import pybullet_data
-import crawler as crw
+import crawler_small_mass as crw
 from math import *
 import subprocess as sp
 import imageio
@@ -15,7 +15,7 @@ matplotlib.use('TkAgg')
 ####### SIMULATION SET-UP ###############
 #########################################
 ### time-step used for simulation and total time passed variable
-dt = 1./360.
+dt = 1./2400.
 #
 physicsClient = p.connect(p.GUI)
 p.setAdditionalSearchPath(pybullet_data.getDataPath())
@@ -23,7 +23,7 @@ p.setGravity(0,0,-9.81)
 p.setTimeStep(dt)
 #p.setGravity(0,0,0)
 planeID = p.loadURDF("plane100.urdf", [0,0,0])
-z_rotation = pi/4 #radians
+z_rotation = pi/6 #radians
 model = crw.Crawler(
     urdf_path="/home/fra/Uni/Tesi/crawler",
     dt_simulation=dt,
@@ -51,26 +51,16 @@ for index in range(-1,model.num_joints):
     p.changeDynamics(
         model.Id,
         index,
-        linearDamping=0.00001,
-        angularDamping=0.00001
-    )
-# Girdle link dynamic properties
-p.changeDynamics(model.Id,
-    linkIndex = -1,
-    lateralFriction = 0.0001,
-    spinningFriction = 0.0001,
-    rollingFriction = 0.0,
-    restitution = 0.1,
-    #contactStiffness = 0,
-    #contactDamping = 0
+        linearDamping=0.01,
+        angularDamping=0.01
     )
 # Body dynamic properties
-for i in range(0,model.num_joints-4):
+for i in range(-1,model.num_joints-4):
     p.changeDynamics(model.Id,
         linkIndex = i,
-        lateralFriction = 0.0001,
+        lateralFriction = 0.001,
         spinningFriction = 0.0001,
-        rollingFriction = 0.0,
+        rollingFriction = 0.0001,
         restitution = 0.1,
         #contactStiffness = 0,
         #contactDamping = 0
@@ -78,8 +68,8 @@ for i in range(0,model.num_joints-4):
 # # Last link dynamic properties
 p.changeDynamics(model.Id,
     linkIndex = (model.control_indices[0][-1]+1),
-    lateralFriction = 0.0001,
-    spinningFriction = 0.0001,
+    lateralFriction = 0.00001,
+    spinningFriction = 0.00001,
     rollingFriction = 0.0,
     restitution = 0.1,
     #contactStiffness = 0,
@@ -89,9 +79,9 @@ p.changeDynamics(model.Id,
 for i in range(model.num_joints-4,model.num_joints-2):
     p.changeDynamics(model.Id,
         linkIndex = i,
-        lateralFriction = 0.0001,
-        spinningFriction = 0.0001,
-        rollingFriction = 0.0001,
+        lateralFriction = 0.00001,
+        spinningFriction = 0.00001,
+        rollingFriction = 0.00001,
         restitution = 0.1,
         #contactStiffness = 0,
         #contactDamping = 0
@@ -100,9 +90,9 @@ for i in range(model.num_joints-4,model.num_joints-2):
 for i in range(model.num_joints-2,model.num_joints):
     p.changeDynamics(model.Id,
         linkIndex = i,
-        lateralFriction = 0.0001,
-        spinningFriction = 0.0001,
-        rollingFriction = 0.0001,
+        lateralFriction = 0.00001,
+        spinningFriction = 0.00001,
+        rollingFriction = 0.00001,
         restitution = 0.1,
         #contactStiffness = 0,
         #contactDamping = 0
@@ -120,28 +110,28 @@ for i in range(model.num_joints-2,model.num_joints):
 ##########################################
 ####### CONTROL PARAMETERS ###############
 ##########################################
-K_lateral = 1000.
+K_lateral = 0. #1000.
 k0_lateral = 0.
 ###
 # Kp = model.generate_Kp(Kp_lat=0., Kp_r_abd=0., Kp_l_abd=0., Kp_flex=0.)
 # Kv = model.generate_Kv(Kv_lat=0., Kv_r_abd=0., Kv_l_abd=0., Kv_flex=0.)
 # Kp[6+model.num_joints-4,6+model.num_joints-4]=10.
 # Kv[6+model.num_joints-4,6+model.num_joints-4]=1.
-# Kp = model.generate_Kp(Kp_lat=5., Kp_r_abd=10., Kp_l_abd=10., Kp_flex=10.)
-# Kv = model.generate_Kv(Kv_lat=1., Kv_r_abd=10., Kv_l_abd=10., Kv_flex=10.)
+# Kp = model.generate_Kp(Kp_lat=20000., Kp_r_abd=20000., Kp_l_abd=20000., Kp_flex=100.)
+# Kv = model.generate_Kv(Kv_lat=500, Kv_r_abd=500, Kv_l_abd=500, Kv_flex=50)
+Kp = model.generate_Kp(Kp_lat=1e7, Kp_r_abd=1e8, Kp_l_abd=1e8, Kp_flex=0.)
+Kv = model.generate_Kv(Kv_lat=5e6, Kv_r_abd=5e7, Kv_l_abd=5e7, Kv_flex=0.)
 # Gain for more joints
-Kp = model.generate_Kp(Kp_lat=30e3, Kp_r_abd=30e3, Kp_l_abd=30e3, Kp_flex=10000.)
-Kv = model.generate_Kv(Kv_lat=8e3, Kv_r_abd=8e3, Kv_l_abd=8e3, Kv_flex=2000.)
 ###
 #model.set_low_pass_qd(fc=10)
-model.set_low_pass_lateral_qa(fc=6)
+model.set_low_pass_lateral_qa(fc=60)
 model.set_low_pass_tau(fc=90)
 ### Sliding mode --> rho = upper bound on the norm of the disturbance
 rho = 0.5
 ### PD & P controllers parameters
-fmax_list = model.generate_fmax_list(fmax_lat=4.0, fmax_r_abd=40., fmax_l_abd=40., fmax_flex=10.0)
-pGain_list = model.generate_pGain_list(pGain_lat=0.00001,  pGain_r_abd=0.001,   pGain_l_abd=0.00001,   pGain_flex=0.000001)
-vGain_list = model.generate_vGain_list(vGain_lat=0.00009, vGain_r_abd=0.002,   vGain_l_abd=0.00009,   vGain_flex=0.000009)
+fmax_list = model.generate_fmax_list(fmax_lat=0.01, fmax_r_abd=0.01, fmax_l_abd=0.01, fmax_flex=0.01)
+pGain_list = model.generate_pGain_list(pGain_lat=0.0,  pGain_r_abd=0.0,   pGain_l_abd=0.0,   pGain_flex=0.0)
+vGain_list = model.generate_vGain_list(vGain_lat=0.0, vGain_r_abd=0.0,   vGain_l_abd=0.0,   vGain_flex=0.0)
 pGain_list_vel = model.generate_pGain_list(pGain_lat=1,  pGain_r_abd=1,   pGain_l_abd=1,   pGain_flex=1)
 vGain_lat_mixed = 0.09
 ##########################################
@@ -193,6 +183,13 @@ def single_step_torque_control(t,eq_history, eCOM_history, des_history, tau_hist
             #rho=rho,
             verbose=False
         )
+        # for i in range(1,model.num_joints-4,2):
+        #     p.setJointMotorControl2(
+        #         bodyUniqueId=model.Id,
+        #         jointIndex=i,
+        #         controlMode=p.TORQUE_CONTROL,
+        #         force = 1e-20
+        #         )
         tau_applied = model.apply_torques(
             tau_des=tau_des,
             filtered=True
@@ -322,7 +319,8 @@ def single_step_PD_control(t,eq_history, eCOM_history, des_history, tau_history,
             eCOM_history = np.vstack((eCOM_history,model.COM_position_world()[1]))
             des_history.append([q_des,qd_des,qdd_des])
         #
-        time.sleep(dt)
+        if not log_video:
+            time.sleep(dt)
     #state_history=[q_hist,qd_hist,qdd_hist]
     return t, eq_history, eCOM_history, des_history, tau_history, state_history
 ###################
@@ -498,17 +496,20 @@ def single_step_torque_control_traveling_wave(t,eq_history, eCOM_history, des_hi
 ##########################################
 ####### WALKING SIMULATION ###############
 ##########################################
-t_stance = 2
+t_stance = 0.2
 ### Initialization
 steps = int(t_stance/dt)
 t = 0.0
 # Video logger settings
 log_video = False
 if log_video:
-    video_name = "./video/corrected qa start/hinged_tail_bent_pi43_t2.mp4"
-    writer = imageio.get_writer(video_name, fps=int(1/dt))
+    video_name = "./video/small model/trial4.mp4"
+    fps = int(1/dt)
+    if fps>360:
+        fps=360
+    writer = imageio.get_writer(video_name, fps=fps)
 p.configureDebugVisualizer(p.COV_ENABLE_GUI,0)
-p.resetDebugVisualizerCamera(cameraDistance=0.05, cameraYaw = 50, cameraPitch=-60, cameraTargetPosition=[0,0,0])
+p.resetDebugVisualizerCamera(cameraDistance=0.1, cameraYaw = 50, cameraPitch=-60, cameraTargetPosition=[0,0,0])
 # Data logger settings
 log_data = True
 eCOM_history = np.array([0])
@@ -517,11 +518,18 @@ des_history=list()
 tau_history=list()
 state_history=list()
 # Starting position and legs abduction range
-theta_g0 = pi/4
-theta_gf = -pi/3
+theta_g0 = pi/6
+theta_gf = -pi/2
 # p.resetJointState(model.Id, model.control_indices[1][0],theta_g0)
 # p.resetJointState(model.Id, model.control_indices[2][0],-theta_gf)
 model.set_bent_position(theta_rg=theta_g0, theta_lg=-theta_gf,A_lat=-pi/3.5,theta_lat_0=0)
+for i in range(1,model.num_joints-4,2):
+    p.setJointMotorControl2(
+        bodyUniqueId=model.Id,
+        jointIndex=i,
+        controlMode=p.TORQUE_CONTROL,
+        force = -1e-20
+        )
 # Let the model touch the ground plane
 for i in range (30):
     p.stepSimulation()
@@ -531,6 +539,7 @@ for i in range (30):
 model.fix_right_foot()
 model.free_left_foot()
 model.fix_tail()
+#model.set_right_erp(0.01)
 # ### Let the model adapt to the new constraints
 for i in range(30):
     p.stepSimulation()
@@ -549,26 +558,6 @@ t,eq_history, eCOM_history, des_history, tau_history, state_history, p_COM_time_
     log_data=log_data,
     log_video=log_video
     )
-# model.turn_off_crawler()
-# for i in range(60):
-#     p.stepSimulation()
-#     if log_video:
-#         img=p.getCameraImage(800, 640, renderer=p.ER_BULLET_HARDWARE_OPENGL)[2]
-#         writer.append_data(img)
-#     else:
-#         time.sleep(dt)
-# t,eq_history, eCOM_history, des_history, tau_history, state_history = single_step_torque_control(
-#     t,
-#     eq_history,
-#     eCOM_history,
-#     des_history,
-#     tau_history,
-#     state_history,
-#     steps=100,
-#     log_data=log_data,
-#     log_video=logging,
-#     stop_motion=True
-#     )
 # t,eq_history, eCOM_history, des_history, tau_history, state_history = single_step_PD_control(
 #     t,
 #     eq_history,
@@ -578,48 +567,8 @@ t,eq_history, eCOM_history, des_history, tau_history, state_history, p_COM_time_
 #     state_history,
 #     steps=steps
 #     )
-# t,eq_history, eCOM_history, des_history, tau_history, state_history = single_step_P_control_vel(
-#     t,
-#     eq_history,
-#     eCOM_history,
-#     des_history,
-#     tau_history,
-#     state_history,
-#     steps=steps
-#     )
-# t,eq_history, eCOM_history, des_history, tau_history, state_history = single_step_mixed_PDP_control(
-#     t,
-#     eq_history,
-#     eCOM_history,
-#     des_history,
-#     tau_history,
-#     state_history,
-#     steps=steps
-#     )
-# t,eq_history, eCOM_history, des_history, tau_history, state_history = single_step_mixed_torqueP_control(
-#     t,
-#     eq_history,
-#     eCOM_history,
-#     des_history,
-#     tau_history,
-#     state_history,
-#     steps=steps
-#     )
 
-model.fix_left_foot()
-model.free_right_foot()
-#############
-### LEFT STEP
-# model.fix_left_foot()
-# model.free_right_foot()
 
-# t,eq_history, eCOM_history, des_history, tau_history = single_step_torque_control(
-#     t,
-#     eq_history,
-#     eCOM_history,
-#     des_history,tau_history, 
-#     steps = steps
-#     )
 if  log_video:
     writer.close()
 p.disconnect()
@@ -735,11 +684,11 @@ if log_data:
     #     axs_tau[i//3,i%3].plot(tau_lateral_f_history[:,i-1],color="tab:brown")
     #     #axs[i//3,i%3].plot(eq_history[:,i-1], color="tab:pink")
     #     axs_tau[i//3,i%3].set_title("Tau %d" %i)
-    fig_COM= plt.figure()
-    axs_COM = fig_COM.add_subplot(111)
-    axs_COM.plot(p_COM_time_array[:,0], p_COM_time_array[:,1],color="xkcd:teal")
-    axs_COM.set_title("COM x-y trajectory")
-    axs_COM.set_aspect('equal')
+    # fig_COM= plt.figure()
+    # axs_COM = fig_COM.add_subplot(111)
+    # axs_COM.plot(p_COM_time_array[:,0], p_COM_time_array[:,1],color="xkcd:teal")
+    # axs_COM.set_title("COM x-y trajectory")
+    # axs_COM.set_aspect('equal')
 
     plt.show()
 

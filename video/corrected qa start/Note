@@ -1,0 +1,6 @@
+07friction_w_last_link_w_superbent_pi66_t2
+  Kp = model.generate_Kp(Kp_lat=6000., Kp_r_abd=20000., Kp_l_abd=12000., Kp_flex=10000.)
+  Kv = model.generate_Kv(Kv_lat=3000., Kv_r_abd=3000., Kv_l_abd=2000., Kv_flex=2000.)
+  model.set_bent_position(theta_rg=theta_g0, theta_lg=-theta_gf,A_lat=-pi/4,theta_lat_0=0)
+  
+

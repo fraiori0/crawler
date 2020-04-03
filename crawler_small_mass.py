@@ -324,6 +324,11 @@ class Crawler:
                 parentFramePosition=[0, 0, 0], childFramePosition=list(p.getLinkState(self.Id,self.control_indices[1][1])[0]))
             self.constraints["right_foot"]=constId
         return constId
+    def set_right_erp(self, erp=0.99):
+        constId = self.constraints["right_foot"]
+        if constId:
+            p.changeConstraint(constId,erp=erp)
+        return constId
 
     def fix_left_foot(self):
         #constraint is generated at the origin of the center of mass of the leg, i.e. at center of the spherical "foot"

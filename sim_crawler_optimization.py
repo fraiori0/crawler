@@ -106,16 +106,16 @@ def run_simulation(dt, t_stance, duration,
     ####### MISCELLANEOUS ####################
     if graphic_mode:
         p.configureDebugVisualizer(p.COV_ENABLE_GUI,0)
-        p.resetDebugVisualizerCamera(cameraDistance=0.5, cameraYaw = 50, cameraPitch=-60, cameraTargetPosition=[0,0,0])
+        p.resetDebugVisualizerCamera(cameraDistance=1, cameraYaw = 50, cameraPitch=-60, cameraTargetPosition=[0.5,0,0])
     if (video_logging and graphic_mode):
         video_writer = imageio.get_writer(video_name, fps=int(1/dt))
     ##########################################
     ####### PERFORMANCE EVALUATION ###########
     loss = 0.0
     max_loss = 10000000.0 # value to set when something goes wrong, if constraints are "hard"
-    max_COM_height = 2*model.body_sphere_radius
-    max_COM_speed = 0.8 #TODO: check this value
-    n_mean = 3
+    max_COM_height = 4*model.body_sphere_radius
+    max_COM_speed = 1 #TODO: check this value
+    n_mean = 6
     ##########################################
     ####### TIME SERIES CREATION #############
     steps = int(duration/dt)
@@ -298,9 +298,9 @@ def generate_parameters_array(t_stance,
     A_lat_0=-pi/3.5
     theta_lat_0=0.0
     #
-    girdle_friction = 0.3
-    body_friction = 0.3
-    leg_friction = 0.3
+    girdle_friction = 0.2
+    body_friction = 0.2
+    leg_friction = 0.2
     return (dt, t_stance, duration,
     A, f1, n, t1_off, delta_off, bias,
     theta_rg0, theta_lg0, A_lat_0, theta_lat_0,
@@ -350,7 +350,7 @@ def run_bayesian_optimization(objective_function,param_dist,iterations,filename=
         df.to_csv(path_or_buf=("./optimization results/"+filename),sep=',', index_label='Index')
 
 param_dist = {
-    "A_lat": hp.uniform("A_lat",0.05,0.2),
+    "A_lat": hp.uniform("A_lat",0.05,0.1),
     "k_lat": hp.uniform("k_lat",0.5,1),
     "A_abd": hp.uniform("A_abd",0.05,0.2),
     "A_flex": hp.uniform("A_flex",0.05,0.1),
@@ -363,8 +363,8 @@ param_dist = {
     "delta_lat_3": hp.uniform("delta_lat_3",0.0,pi),
     "delta_abd": hp.uniform("delta_abd",0.0,pi)
 }
-csv_name="trial_ultraweak_02friction_Energycost_ycost_07bias.csv"
-#run_bayesian_optimization(objective_function=objective_function,param_dist=param_dist,iterations=100, filename=csv_name)
+csv_name="ultraultraweak_02_friction_goforward.csv"
+#run_bayesian_optimization(objective_function=objective_function,param_dist=param_dist,iterations=400, filename=csv_name)
 
 if True:
     trial_params_dict = {
@@ -381,7 +381,8 @@ if True:
         't_lat': 0.368409259583114,
         't_lat_delay': 0.07711040413095935}
 
-    trial_params_tuple = (0.10938820258459488, 0.14140431170454476, 0.16853955114468958, 0.33235595592028844, 0.40463274872018373, 2.4379666733636345, 0.47872192307268224, 0.7161509762835492, 0.00035931453043262784, 0.03421267164449099, 0.014685591146372738, 0.2276936274930831)
+    trial_params_tuple = (0.07250898465808879,0.05508882365273971,0.07522176610876853,1.6131916405353646,2.8123686654353137,2.6803440507936367,2.8740834310606975,0.6152814876177062,0.4964060293402807,0.32013336961665506,0.49867828362420236,0.00535278051235347
+    )
     for key,val in zip(trial_params_dict,trial_params_tuple):
         trial_params_dict[key] = val
     # print(trial_params_dict)
@@ -391,10 +392,11 @@ if True:
                 **trial_params_dict,
                 t_stance = 0.5,
                 n_lat=2, n_abd=2,
-                k_bias_abd=0.5, k_bias_flex=0.5
+                k_bias_abd=0.6, k_bias_flex=0.6
             ),
             keep_in_check=True,soft_constraints=False,
-            graphic_mode=True, plot_graph=True
+            graphic_mode=True, plot_graph=True,
+            video_logging=True, video_name="./optimization results/video/best_ultraultraweak_02_friction_goforward.mp4"
         )
     print("loss: ",loss)
 

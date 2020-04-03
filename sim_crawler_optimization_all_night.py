@@ -1118,7 +1118,7 @@ param_dist3 = {
 }
 csv_name3="weak_nowoosh_02friction_ycost.csv"
 #run_bayesian_optimization3(objective_function=objective_function3,param_dist=param_dist3,iterations=n_iter, filename=csv_name3)
-if False:
+if True:
     trial_params_dict = {
         'A_abd': 0.5160641349761493,
         'A_flex': 0.5699905310095197,
@@ -2251,7 +2251,7 @@ param_dist6 = {
 }
 csv_name6="ultraweak_03friction_ycost.csv"
 #run_bayesian_optimization6(objective_function=objective_function6,param_dist=param_dist6,iterations=n_iter, filename=csv_name6)
-if True:
+if False:
     trial_params_dict6 = {
         'A_abd': 0.5160641349761493,
         'A_flex': 0.5699905310095197,
