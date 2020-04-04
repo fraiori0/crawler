@@ -8,8 +8,8 @@
   <!--CONSTANTS-->
   <xacro:property name="PI" value="3.14159" />
 
-  <xacro:property name="BODY_LENGTH" value="0.076"/>
-  <xacro:property name="BODY_MASS" value="0.0028"/>
+  <xacro:property name="BODY_LENGTH" value="0.76"/>
+  <xacro:property name="BODY_MASS" value="2.8"/>
 
   <xacro:property name="SPINE_SEGMENTS_NUMBER" value="5" />
   <xacro:property name="N_HALF" value="3" />

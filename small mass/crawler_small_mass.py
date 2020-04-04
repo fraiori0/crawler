@@ -117,7 +117,7 @@ class Model_State:
 
 class Crawler:
 
-    def __init__(self, dt_simulation, urdf_path="/home/fra/Uni/Tesi/crawler", base_position=[0,0,0.5], base_orientation=[0,0,0,1], mass_distribution=False, scale=1):
+    def __init__(self, dt_simulation, urdf_path="/home/fra/Uni/Tesi/crawler/small mass", base_position=[0,0,0.5], base_orientation=[0,0,0,1], mass_distribution=False, scale=1):
         ### PHYSICAL PROPERTIES AND URDF ###
         self.scale=scale
         #NOTE: Properties in this block of code must be manually matched to those defined in the Xacro file

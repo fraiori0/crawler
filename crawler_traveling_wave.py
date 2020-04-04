@@ -1026,7 +1026,7 @@ class Crawler:
         qdj[self.control_indices[1][0]] = qdra
         qddj[self.control_indices[1][0]] = qddra
         # right flexion
-        qj[self.control_indices[1][1]] = self.neutral_contact_flexion_angle + 0.03*np.sin(2*pi*f*t)
+        qj[self.control_indices[1][1]] = self.neutral_contact_flexion_angle
         qdj[self.control_indices[1][1]] = 0.
         qddj[self.control_indices[1][1]] = 0.
         # left abduction
@@ -1035,7 +1035,7 @@ class Crawler:
         qdj[self.control_indices[2][0]] = -qdla
         qddj[self.control_indices[2][0]] = -qddla
         # left flexion
-        qj[self.control_indices[2][1]] = -self.neutral_contact_flexion_angle + 0.03*np.sin(2*pi*f*t + pi)
+        qj[self.control_indices[2][1]] = -self.neutral_contact_flexion_angle
         qdj[self.control_indices[2][1]] = 0.
         qddj[self.control_indices[2][1]] = 0.
         # If set to True, prepend the current state of the base, stored in self.state

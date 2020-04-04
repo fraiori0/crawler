@@ -539,7 +539,9 @@ for i in range (30):
 model.fix_tail()
 model.fix_right_foot()
 model.free_left_foot()
-#model.set_right_erp(0.01)
+constId = p.createConstraint(model.Id, model.control_indices[1][1], -1,-1, p.JOINT_POINT2POINT, jointAxis=[0, 0, 0],
+                parentFramePosition=[0, 0, 0], childFramePosition=list(p.getLinkState(model.Id,model.control_indices[1][1])[0]))
+#model.set_right_erp(1000)
 # ### Let the model adapt to the new constraints
 for i in range(30):
     p.stepSimulation()
