@@ -175,7 +175,7 @@ def run_simulation(dt, t_stance, duration,
     model.integrator_lateral_qa.reset(model.state.q[model.mask_act_shifted])
     model.free_right_foot()
     model.fix_left_foot()
-    #model.fix_tail()
+    model.fix_tail()
     model.set_COM_y_ref()
     qda_des_prev=np.array(([0]*len(model.control_indices[0])))
     # walk and record data
@@ -185,7 +185,7 @@ def run_simulation(dt, t_stance, duration,
             model.invert_feet()
             print("step")
             model.turn_off_crawler()
-            for tmp in range(10):
+            for tmp in range(1):
                 p.stepSimulation()
         # UPDATE STATE
         model.state.update()
@@ -227,7 +227,7 @@ def run_simulation(dt, t_stance, duration,
             passive_body=False
         )
         # UPDATE TIME-ARRAYS
-        if plot_graph_joint:
+        if plot_graph_joint or plot_graph_COM:
             q_time_array[i] = model.state.q.copy()
             qd_time_array[i] = model.state.qd.copy()
             qdd_time_array[i] = model.state.qdd.copy()
@@ -309,29 +309,31 @@ def run_simulation(dt, t_stance, duration,
     if plot_graph_COM:
         fig_COM = plt.figure()
         axs_COM = fig_COM.add_subplot(111)
-        axs_COM.plot(p_COM_time_array[:,0], p_COM_time_array[:,1],color="xkcd:teal")
+        axs_COM.plot(p_COM_time_array[:,0], p_COM_time_array[:,1],color="xkcd:teal", linewidth=4)
         axs_COM.set_title("COM x-y trajectory")
+        axs_COM.set_xlim(-0.22,0.01)
+        axs_COM.set_ylim(-0.16,0.01)
         axs_COM.set_aspect('equal')
-        fig_COM_3D = plt.figure()
-        axs_COM_3D = fig_COM_3D.add_subplot(111, projection='3d')
-        axs_COM_3D.plot(p_COM_time_array[:,0], p_COM_time_array[:,1], p_COM_time_array[:,2],color="xkcd:teal")
-        axs_COM_3D.set_title("COM 3D trajectory")
+        # fig_COM_3D = plt.figure()
+        # axs_COM_3D = fig_COM_3D.add_subplot(111, projection='3d')
+        # axs_COM_3D.plot(p_COM_time_array[:,0], p_COM_time_array[:,1], p_COM_time_array[:,2],color="xkcd:teal")
+        # axs_COM_3D.set_title("COM 3D trajectory")
         #
         plt.show()
     return loss
 
 t_stance = 0.65
 run_simulation(
-    dt=1./480., t_stance=t_stance, duration=2*t_stance,
-    f=1/(2*t_stance), A_lat=-pi/3.5, th0_lat=0.0, th0_abd=pi/8, thf_abd=-pi/3, z_rotation=pi/3,
+    dt=1./360., t_stance=t_stance, duration=t_stance,
+    f=1/(2*t_stance), A_lat=-pi/3.5, th0_lat=0.0, th0_abd=pi/8, thf_abd=-pi/2, z_rotation=pi/3,
     girdle_friction=0.2, body_friction=0.1, last_link_friction=0.1, leg_friction=0.0001,
     # Kp_lat=0, Kp_r_abd=0, Kp_l_abd=0, Kp_flex=0,
     # Kv_lat=0, Kv_r_abd=0, Kv_l_abd=0, Kv_flex=0,
     K_lateral=3000, k0_lateral=1,
-    Kp_lat=70e3, Kp_r_abd=120e3, Kp_l_abd=120e3, Kp_flex=100e3,
-    Kv_lat=20e3, Kv_r_abd=70e3, Kv_l_abd=70e3, Kv_flex=50e3,
+    Kp_lat=70e3, Kp_r_abd=70e3, Kp_l_abd=70e3, Kp_flex=20e3,
+    Kv_lat=20e3, Kv_r_abd=50e3, Kv_l_abd=50e3, Kv_flex=10e3,
     keep_in_check=False, graphic_mode=True, plot_graph_joint=True, plot_graph_COM=True,
-    video_logging=False, video_name="./video/scaled model ydisp/passivebody_01frictionbody_pi83_A35_z3.mp4"
+    video_logging=False, video_name="./video/scaled model ydisp/hinged_tail_pi82_A35_z3.mp4"
 )
 
 # 70p 50v abd pi/8 -pi/2 abd -pi/3.5 A_lat

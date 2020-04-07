@@ -128,7 +128,7 @@ def run_simulation(dt, t_stance, duration,
     ####### MISCELLANEOUS ####################
     if graphic_mode:
         p.configureDebugVisualizer(p.COV_ENABLE_GUI,0)
-        p.resetDebugVisualizerCamera(cameraDistance=0.5, cameraYaw = 50, cameraPitch=-60, cameraTargetPosition=[0,0,0])
+        p.resetDebugVisualizerCamera(cameraDistance=1, cameraYaw = 0, cameraPitch=-89, cameraTargetPosition=[-0.3,0,0])
     if (video_logging and graphic_mode):
         video_writer = imageio.get_writer(video_name, fps=int(1/dt))
     ##########################################
@@ -180,11 +180,12 @@ def run_simulation(dt, t_stance, duration,
     # walk and record data
     for i in range(steps):
         # UPDATE CONSTRAINTS
-        # if not (i%steps_stance):
-        #     model.invert_feet()
-        #     print("step")
-        #     for tmp in range(10):
-        #         p.stepSimulation()
+        if not (i%steps_stance):
+            model.invert_feet()
+            print("step")
+            for tmp in range(30):
+                p.stepSimulation()
+                time.sleep(1)
         # UPDATE STATE
         model.state.update()
         p_COM_curr = np.array(model.COM_position_world())
@@ -302,7 +303,7 @@ def run_simulation(dt, t_stance, duration,
 t_stance = 0.65
 run_simulation(
     dt=1./360., t_stance=t_stance, duration=t_stance,
-    f=1/(2*t_stance), A_lat=-pi/4.5, th0_lat=0.0, th0_abd=pi/8, thf_abd=-pi/2, z_rotation=pi/3,
+    f=1/(2*t_stance), A_lat=0, th0_lat=0.0, th0_abd=0, thf_abd=0, z_rotation=0,
     girdle_friction=0.1, body_friction=0.1, last_link_friction=0.3, leg_friction=0.3,
     # Kp_lat=0, Kp_r_abd=0, Kp_l_abd=0, Kp_flex=0,
     # Kv_lat=0, Kv_r_abd=0, Kv_l_abd=0, Kv_flex=0,
