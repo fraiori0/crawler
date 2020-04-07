@@ -175,7 +175,7 @@ def run_simulation(dt, t_stance, duration,
     model.integrator_lateral_qa.reset(model.state.q[model.mask_act_shifted])
     model.free_right_foot()
     model.fix_left_foot()
-    model.fix_tail()
+    model.fix_tail(second_last=False)
     model.set_COM_y_ref()
     qda_des_prev=np.array(([0]*len(model.control_indices[0])))
     # walk and record data
@@ -325,11 +325,11 @@ def run_simulation(dt, t_stance, duration,
 t_stance = 0.65
 run_simulation(
     dt=1./360., t_stance=t_stance, duration=t_stance,
-    f=1/(2*t_stance), A_lat=-pi/3.5, th0_lat=0.0, th0_abd=pi/8, thf_abd=-pi/2, z_rotation=pi/3,
+    f=1/(2*t_stance), A_lat=-pi/2.8, th0_lat=0.0, th0_abd=pi/8, thf_abd=-pi/2, z_rotation=pi/3.5,
     girdle_friction=0.2, body_friction=0.1, last_link_friction=0.1, leg_friction=0.0001,
     # Kp_lat=0, Kp_r_abd=0, Kp_l_abd=0, Kp_flex=0,
     # Kv_lat=0, Kv_r_abd=0, Kv_l_abd=0, Kv_flex=0,
-    K_lateral=3000, k0_lateral=1,
+    K_lateral=5000, k0_lateral=10.0,
     Kp_lat=70e3, Kp_r_abd=70e3, Kp_l_abd=70e3, Kp_flex=20e3,
     Kv_lat=20e3, Kv_r_abd=50e3, Kv_l_abd=50e3, Kv_flex=10e3,
     keep_in_check=False, graphic_mode=True, plot_graph_joint=True, plot_graph_COM=True,

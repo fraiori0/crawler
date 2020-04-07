@@ -354,13 +354,13 @@ class Crawler:
         else:
             self.fix_left_foot()
 
-    def fix_tail(self):
+    def fix_tail(self, second_last = False):
         #constraint is generated at the origin of the center of mass of the last link
         if self.constraints["last_link"]:
             constId=self.constraints["last_link"]
             print("Error: remove right foot constraint before setting a new one")
         else:
-            last_link_index = self.control_indices[0][-1]+1
+            last_link_index = self.control_indices[0][-1]+1 - 2*int(second_last)
             constId = p.createConstraint(self.Id, last_link_index, -1,-1, p.JOINT_POINT2POINT, jointAxis=[0, 0, 0],
                 parentFramePosition=[0, 0, 0], childFramePosition=list(p.getLinkState(self.Id,last_link_index)[0]))
             self.constraints["last_link"]=constId
