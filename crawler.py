@@ -128,7 +128,7 @@ class Crawler:
         self.body_sphere_radius     = self.body_length/16
         self.foot_sphere_radius     = self.body_sphere_radius/3
         self.neutral_contact_flexion_angle = asin((self.body_sphere_radius-self.foot_sphere_radius)/self.leg_length)-0.0001
-        #
+        ###
         if not (mass_distribution):
             self.Id = p.loadURDF(
                 "%s/crawler.urdf" % urdf_path, 
@@ -225,6 +225,8 @@ class Crawler:
         self.low_pass_lateral_qa = Discrete_Low_Pass(dim=len(self.mask_act),dt=self.dt_simulation, fc=100*self.dt_simulation, K=1)
         self.integrator_lateral_qa = Integrator_Forward_Euler(self.dt_simulation,[0]*len(self.mask_act))
         ###PINOCCHIO INITIALIZATION AND VARIABLES
+        # "virtual twin" of PyBullet's model that can be used to run 
+        # functions from the Pinocchio library
         if not mass_distribution:
             self.pinmodel = pin.buildModelFromUrdf("%s/crawler.urdf" % urdf_path,pin.JointModelFreeFlyer())
             self.pinmodel_zerog = pin.buildModelFromUrdf("%s/crawler.urdf" % urdf_path,pin.JointModelFreeFlyer())

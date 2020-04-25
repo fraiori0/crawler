@@ -15,7 +15,7 @@ import pandas as pd
 matplotlib.use('TkAgg')
 
 
-def run_simulation(dt, t_stance, duration,
+def run_simulation_null_y_COM(dt, t_stance, duration,
     f, A_lat,th0_lat, th0_abd, thf_abd,
     z_rotation,
     girdle_friction, body_friction, last_link_friction, leg_friction,
@@ -25,6 +25,75 @@ def run_simulation(dt, t_stance, duration,
     keep_in_check=True,
     graphic_mode=False, plot_graph_joint=False, plot_graph_COM=False,
     video_logging=False, video_name="./video/dump/dump.mp4"):
+    """
+    Parameters
+    ----------
+    dt : float
+        length of simulation time-step (seconds, tipically something between 1/240 and 1/480);
+        values too high can cause instability in the controller due to discretization\n
+    t_stance : float
+        duration of the stance phase (50% symmetric duty cycle)\n
+    duration : float 
+        total duration of the simulation\n
+    f : float
+        walking frequency, titpically should be set to 1/(2*t_stance)\n
+    A_lat : float
+        amplitude of the traveling wave used for setting the starting position\n
+    th0_lat : float
+        offset of the traveling wave used for setting the starting position\n
+    th0_abd : float
+        starting value for the leg abduction trajectory\n
+    thf_abd : float
+        ending value for the leg abduction trajectory\n
+    z_rotation : float
+        initial z-rotation of the model reference frame\n
+    girdle_friction : float
+        value of the friction (w/ the floor) of the girdle link\n
+    body_friction : float
+        value of the friction (w/ the floor) of the spinal segments\n
+    last_link_friction : [type]
+        value of the friction (w/ the floor) of the last segment of the spine\n
+    leg_friction : float
+        value of the friction (w/ the floor) of the legs link (feet's friction, substantially)\n
+    K_lateral : float
+        gain of the closed-loop inverse kinematics\n
+    k0_lateral : float
+        k0 value of the closed-loop inverse kinematics, check crawler.py for a better description\n
+    Kp_lat : float
+        spinal lateral joints' proportional gain for the computed torque control\n
+    Kp_r_abd : float
+        right abduction joint's proportional gain for the computed torque control\n
+    Kp_l_abd : float
+        left abduction joint's proportional gain for the computed torque control\n
+    Kp_flex : float
+        leg flexion joints' proportional gain for the computed torque control\n
+    Kv_lat : float
+        spinal lateral joints' derivative gain for the computed torque control\n
+    Kv_r_abd : float
+        right abduction joint's derivative gain for the computed torque control\n
+    Kv_l_abd : float
+        left abduction joint's derivative gain for the computed torque control\n
+    Kv_flex : float
+        leg flexion joints' derivative gain for the computed torque control\n
+    keep_in_check : bool, optional
+        check if the simulation have an unexpected unrealistical behaviour 
+        (should be properly set up inside this function definition), by default True\n
+    graphic_mode : bool, optional
+        show GUI of simulation, by default False. Need to be set to True for video logging\n
+    plot_graph_joint : bool, optional
+        plot joints' parameters, by default False\n
+    plot_graph_COM : bool, optional
+        plot COM's trajectory, by default False\n
+    video_logging : bool, optional
+        save a video of the simulation, by default False\n
+    video_name : str, optional
+        filepath for the video file, by default "./video/dump/dump.mp4"\n
+
+    Returns
+    -------
+    loss: float\n
+        Value of the loss function of the simulation
+    """
     # dt, t_stance, duration = time parameter, dt MUST be the same used to create the model
     # A,f1,n,t2_off,delta_off,bias = parameters for the generation of the torques
     # theta_rg0, theta_lg0, A_lat_0, theta_lat_0= parameters for setting the starting position
@@ -323,7 +392,7 @@ def run_simulation(dt, t_stance, duration,
     return loss
 
 t_stance = 0.65
-run_simulation(
+run_simulation_null_y_COM(
     dt=1./360., t_stance=t_stance, duration=t_stance,
     f=1/(2*t_stance), A_lat=-pi/2.8, th0_lat=0.0, th0_abd=pi/8, thf_abd=-pi/2, z_rotation=pi/3.5,
     girdle_friction=0.2, body_friction=0.1, last_link_friction=0.1, leg_friction=0.0001,
@@ -335,5 +404,3 @@ run_simulation(
     keep_in_check=False, graphic_mode=True, plot_graph_joint=True, plot_graph_COM=True,
     video_logging=False, video_name="./video/scaled model ydisp/hinged_tail_pi82_A35_z3.mp4"
 )
-
-# 70p 50v abd pi/8 -pi/2 abd -pi/3.5 A_lat
