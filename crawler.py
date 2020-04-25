@@ -650,10 +650,10 @@ class Crawler:
         Parameters
         ----------
         K : float
-            Gain of the closed loop 
+            Gain of the closed loop \n
         k0 : float, optional
             parameters for the gradient descent, used for choosing the values of the additional joints speeds
-            in the nullspace of the Jacobian, by default 1
+            in the nullspace of the Jacobian, by default 1\n
         verbose : bool, optional
              by default False
 
@@ -777,6 +777,26 @@ class Crawler:
         return (qda,qdaf,e)
     
     def solve_null_COM_y_speed_optimization_qdda(self, qda_prev, K,k0=1, filtered=True):
+        """
+        Run Closed-loop Inverse Kinematics and compute also the desired position and accelerations,
+        integrating and derivating qda with backward Euler's approximation
+
+        Parameters
+        ----------
+        qda_prev : np.array(float)
+            value of the desired joints' speeds during the last time-step\n
+        K : float
+            CLIK gain, to be passed to self.solve_null_COM_y_speed_optimization()\n
+        k0 : float, optional
+            to be passed to self.solve_null_COM_y_speed_optimization(), by default 1\n
+        filtered : bool, optional
+            whether to filter qda using self.low_pass_lateral_qa, by default True
+
+        Returns
+        -------
+        tuple(np.array,np.array,np.array)
+            (qa,qda,qdda)
+        """
         # Compute also qa and qdda from the qda computed inside self.solve_null_COM_y_speed_optimization().
         # This is probably better in its filtered version, 
             # since this is the desired trajectory to track at joints level
@@ -794,6 +814,28 @@ class Crawler:
         return qa,qda, qdda
     
     def generate_abduction_trajectory(self, theta0, thetaf, ti, t_stance, cos_fun=True):
+        """
+        Generate desired position, speed and acceleration for an abduction joint at time ti, following a cosinusoidal profile
+        that have null speed at the extremities of the trajectory
+
+        Parameters
+        ----------
+        theta0 : float
+            upper limit of the abduction\n
+        thetaf : float
+            lower limit of the abduction\n
+        ti : float
+            time\n
+        t_stance : float
+            duration of the stance phase (50% symmetric duty cycle, equal to 1/2 of step duration)\n
+        cos_fun : bool, optional
+            if False use a linear profile instead of a cosine, by default True\n
+
+        Returns
+        -------
+        tuple(3xfloat)
+            (theta, thetad, thetadd)
+        """
         #ti = time from start of the walking locomotion, t_stance = total (desired) stance phase duration
         if cos_fun:
             theta = (theta0+thetaf)/2 + (theta0-thetaf)*cos(pi*ti/t_stance)/2
@@ -806,6 +848,37 @@ class Crawler:
         return theta, thetad, thetadd
     
     def generate_joints_trajectory(self, theta0, thetaf, ti, t_stance, qa_des, qda_des, qdda_des, cos_abd=True):
+        """
+        Generate the desired position, speed and acceleration for all the joints of the model
+
+        Parameters
+        ----------
+        theta0 : float
+            upper limit of leg abduction\n
+        thetaf : float
+            upper limit of leg abduction\n
+        ti : float
+            time\n
+        t_stance : float
+            duration of a single step (50% symmetric duty cycle)\n
+        qa_des : np.array
+            array of the desired position for the spinal lateral joints.
+            Can be generated using self.solve_null_COM_y_speed_optimization_qdda()\n
+        qda_des : np.array
+            array of the desired speed for the spinal lateral joints.
+            Can be generated using self.solve_null_COM_y_speed_optimization_qdda()\n
+        qdda_des : np.array
+            array of the desired acceleration for the spinal lateral joints.
+            Can be generated using self.solve_null_COM_y_speed_optimization_qdda()\n
+        cos_abd : bool, optional
+            Whether to follow a cosinusoidal function for the abduction of the legs, by default True
+
+        Returns
+        -------
+        (q_des, qd_des, qdd_des, e)
+            q_des, qd_des, qdd_des = desired values of speed,acceleration of the model's joints\n
+            e = between q_des and the actual joints' positions
+        """
         #ti = time from start of the walking locomotion, t_stance = total (desired) stance phase duration
         # RL=0 if right leg stance, 1 if left leg stance (stance leg is the one with the constraied foot)
         # q[3:6] must be a quaternion
@@ -878,7 +951,36 @@ class Crawler:
         e = np.concatenate(([0.0,0.0,0.0,0.0,0.0,0.0],(q_des[self.mask_joints_shifted] - self.state.q[self.mask_joints_shifted])))
         return q_des, qd_des, qdd_des, e
     
-    def solve_computed_torque_control(self, q_des, qd_des, qdd_des, Kp, Kv, verbose=False): 
+    def solve_computed_torque_control(self, q_des, qd_des, qdd_des, Kp, Kv, verbose=False):
+        """Computed Torque Control (CTC) for following the desired joints' trajectories
+        
+        Parameters
+        ----------
+        q_des : np.array
+            desired joints' positions\n
+        qd_des : np.array
+            desired joints' positions\n
+        qdd_des : np.array
+            desired joints' positions\n
+        Kp : np.array(#joints,#joints matrix)
+            proportional gain matrix for the CTC\n
+        Kv : np.array(#joints,#joints matrix)
+            derivative gain matrix for the CTC\n
+        verbose : bool, optional
+            by default False
+
+        Returns
+        -------
+        (tau, e)
+            tau = np.array of the torques to apply to the joints
+            e = joints' positional error
+
+        Notes
+        -------
+        Exploit the Pinocchio library to compute inverse dynamics and the mass matrix.\n
+        External disturbances (forces from contacts and friction) are estimated for the current time-step.
+        See inline comments and Thesis report for details
+        """
         ### Everything should be passed as a NUMPY ARRAY
         # ------->  Remember to update self.state once (and only once) every time-step  <-------
         # Set the state variable to be used with Pinocchio
@@ -922,6 +1024,12 @@ class Crawler:
         return tau_act_closed_loop, np.ndarray.flatten(e)
     
     def solve_computed_torque_control_sliding(self, q_des, qd_des, qdd_des, Kp, Kv, rho, verbose=False): 
+        """
+        Similar to self.solve_computed_torque_control() but add a sliding term to apply a continuous sliding mode
+        control.
+        Currently doesn't really improve the CTC, possibily due to discretization (chattering) and bad disturbance
+        estimation (should be modifed to exploit the disturbance estimate from the CTC)
+        """
         ### Everything should be passed as a NUMPY ARRAY
         # See comments in the function solve_computed_torque_control
         q_pin = self.state.q[self.mask_q_pyb_to_pin]
@@ -958,6 +1066,10 @@ class Crawler:
         return tau_act_closed_loop, np.ndarray.flatten(e)
 
     def compute_sliding_delta(self, Kp, Kv, rho, e, ed, q=100):
+        """
+        Variable structure control.
+        Compute the sliding additional term used by self.solve_computed_torque_control_sliding(), see docstring for it
+        """
         A11 = np.empty(Kp.shape)
         A12 = np.eye(Kv.shape[1])
         A21 = - Kp.copy()
