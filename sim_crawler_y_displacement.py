@@ -404,3 +404,6 @@ run_simulation_null_y_COM(
     keep_in_check=False, graphic_mode=True, plot_graph_joint=True, plot_graph_COM=True,
     video_logging=False, video_name="./video/scaled model ydisp/hinged_tail_pi82_A35_z3.mp4"
 )
+
+
+

@@ -2,12 +2,10 @@
 
 This repo contains files and materials from my Master's Thesis project at EPFL's BioRobotics Lab.
 
-###
 The files in this project implement features useful for the simulation of a "crawling" locomotion.
 They rely on the open-source physics engine PyBullet and use features from the libraries Pinocchio, HyperOpt and the more common NumPy, SciPy, MatPlotLib, etc.
 
 Since the Pinocchio library is distributed through Anaconda, a Conda environment should be set-up for properly running the code (see requirements.txt for the packages needed)
-
 
 ## Model generation (*.xacro file)
 
@@ -20,7 +18,11 @@ Note that, although the number of spinal joints can be changed parametrically (s
 
 This parameters can be changed only if the *control_indices* parameter and all the masks for joint selection are updated accordingly in the *Crawler* class.
 
+![Model reference](./REport%20images%20and%20miscellaneous/model%20reference%20draw.png "Reference 1")
+![Model reference quotes](./REport%20images%20and%20miscellaneous/model%20reference%20quotes.png "Reference 2")
+
 ## Model control (*crawler.py* file)
+
 crawler.py is the file that contain all the method for controlling the model during a simulation.
 
 When an object of this class is instantiated, a "crawler" (generated from the specified URDF file) is added to the current running PyBullet simulation. 
@@ -28,13 +30,13 @@ The internal methods of this class can be called to keep track of the state of t
 
 **WARNING:** the numerical parameters (number of spinal segments, body length, etc.) at the start of the *Crawler.\__init__()* method should be matched manually to the one used in the XACRO to generate the URDF model. Other parameters are automatically set from these.
 
-
 ## Simulation run and control (*sim_\*.py* files)
-The purpose of each one of this files is mainly to run a simulation and to sow the data.
 
-They are all build around the *run_simulation()* function, which take as an input the desired settings for the simulation (see example), run the simulation, and, if prompted, save a video and print graphs representing joints' state and COM's trajectory of the model during the simulation.
+The main purpose of each one of this files is to run a simulation and to show the corresponding data.
 
-The are built following this structure:
+They are all built around the *run_simulation_\*()* function, which take as an input the desired settings for the simulation, run the simulation, and, if prompted, save a video and print graphs representing joints' state and COM's trajectory of the model during the simulation.
+
+Prototype of what *run_simulation_\*()* does:
 
 1. Start a PyBullet's simulation server, import the floor and instantiate a crawler object
 2. Set-up the simulation;
@@ -56,6 +58,13 @@ The are built following this structure:
 *run_simulation()* include an option for running the simulation in DIRECT mode (not showing the GUI, it runs faster), meant to be used along with optimization.
 
 Additionally, they can contain functions for the set-up and run of optmizations; in the current code there are instances of this when using HyperOpt.
+
+## Optimization
+
+The *run_simulation_\*()* functions are written to be compatible with an usage in a generic optimization setting.
+
+An example of how to run optimization using Bayesian Optimization (through the HyperOpt library) can be found in the *sim_crawler_optimization.py* file:
+
 
 ---
 

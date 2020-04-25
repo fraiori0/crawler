@@ -116,8 +116,57 @@ class Model_State:
         self.tau[self.joint_indices_qd] = info_j[:,3].astype(np.double)
 
 class Crawler:
+    """
+    Crawler class.\n
+    An object of this class can be used to simulate in PyBullet a
+    crawler.urdf model.\n
+    See readme.md for a reference on how this model is built.
 
+    Contain a Model_State, that is used to store and 
+    """
     def __init__(self, dt_simulation, urdf_path="/home/fra/Uni/Tesi/crawler", base_position=[0,0,0.5], base_orientation=[0,0,0,1], mass_distribution=False, scale=1):
+        """
+        Instantiate a Crawler and spawn a crawler model in current PyBullet's physics server
+
+        Parameters
+        ----------
+        dt_simulation : float
+            time-step of PyBullet's simulation in which the model will be used\n
+        urdf_path : str, optional
+            path to folder in which "crawler.urdf" is, by default "/home/fra/Uni/Tesi/crawler"\n
+        base_position : list, optional
+            starting position of the base when spawning the model in PyBullet, by default [0,0,0.5]\n
+        base_orientation : list [quaternion (x,y,z,w)], optional
+            starting orientation of the base reference frame when spawning the model in PyBullet, by default [0,0,0,1]\n
+        mass_distribution : bool, optional
+            set to True to use "crawler_mass_distribution.urdf" instead of "crawler.urdf",
+            they should be in the same folder, by default False\n
+        scale : float, optional
+            scale the dimension of the model (not the mass), by default 1
+
+        Warnings
+        ----------
+        Physical properties in the first block (limited by "###") must match be manually matched
+        to the values used in the XACRO that generates the URDF file\n
+
+        Notes
+        ----------
+        Notable variables:\n
+
+        self.state is an object of the class Model_State that is used
+        to store and update the state of the joints of the model.\n
+        q has 7 + #joints elements, since the base orientation is described by a quaternion.\n
+        The derivatives of the state (qd and qdd) instead have 6 + #joints elements. \n
+        The state vector is ordered as (base_pos, base_or, joints)\n
+
+        self.control_indices contains the indices of the active joints, ordered as
+        (spinal lateral joints, right shoulder joints, left shoulder joints)\n
+
+        self.mask* are used for selecting the desired quantities from numpy.arrays containing data.
+        Check inline comments for more on this\n
+
+
+        """
         ### PHYSICAL PROPERTIES AND URDF ###
         self.scale=scale
         #NOTE: Properties in this block of code must be manually matched to those defined in the Xacro file
@@ -171,7 +220,7 @@ class Crawler:
         # Masks for selecting row/columns of np.arrays, generally used with Jacobians or q/qd/qdd
         #NOTE: q include a quaternion for base orientation while qd has the angular speed of the base,
             # so q has 1 more element than qd. (But the quaternion must be a norm 1 vector, as usual)
-        # --> All the masks are referred to qd except  the "shifted" version
+        # --> All this masks are referred to qd (6+#joints elements) except  the "shifted" version
         # NOTE: PYBULLET ORDER THE MODEL AS (BASE,SPINE,RIGHT GIRDLE,LEFT GIRDLE)
         self.mask_base = list(range(6))
         self.mask_joints = list(range(6,6+self.num_joints))
@@ -226,7 +275,8 @@ class Crawler:
         self.integrator_lateral_qa = Integrator_Forward_Euler(self.dt_simulation,[0]*len(self.mask_act))
         ###PINOCCHIO INITIALIZATION AND VARIABLES
         # "virtual twin" of PyBullet's model that can be used to run 
-        # functions from the Pinocchio library
+        # functions from the Pinocchio library.
+        # A "virtual twin" in an environment with zero gravity is also defined
         if not mass_distribution:
             self.pinmodel = pin.buildModelFromUrdf("%s/crawler.urdf" % urdf_path,pin.JointModelFreeFlyer())
             self.pinmodel_zerog = pin.buildModelFromUrdf("%s/crawler.urdf" % urdf_path,pin.JointModelFreeFlyer())
@@ -248,12 +298,24 @@ class Crawler:
         self.pin_data_eta = self.pinmodel.createData()
         #self.pinmodel.gravity = pin.Motion.Zero()
         ### LAMBDA FUNCTIONS (to avoid redefining them inside each function)
+        # for the generation of traveling wave angle variables
         self.num_lat = len(self.control_indices[0])
         self.trav_wave_theta = lambda t,i,A,f,th0: A*np.sin(-2*pi*f*t + pi*i/self.num_lat + th0)
         self.trav_wave_thetad = lambda t,i,A,f,th0: -A*2*pi*f*np.cos(2*pi*f*t + pi*i/self.num_lat + th0)
         self.trav_wave_thetadd = lambda t,i,A,f,th0: A*2*pi*f*2*pi*f*np.sin(2*pi*f*t + pi*i/self.num_lat + th0)
         
     def set_low_pass_lateral_qa(self, fc, K=1):
+        """
+        Set cut-off frequency for the low pass filter to be used on the spinal
+        lateral joints desired velocities
+
+        Parameters
+        ----------
+        fc : float
+           cut-off frequency\n
+        K : float, optional
+            filter gain, set to 1 to avoid scaling the output value, by default 1
+        """
         self.low_pass_lateral_qa = Discrete_Low_Pass(
             dim=len(self.mask_act),
             dt=self.dt_simulation, 
@@ -261,6 +323,17 @@ class Crawler:
             K=K)
 
     def set_low_pass_qd(self, fc, K=1):
+        """
+        Set cut-off frequency for the low pass filter to be used on the state derivative before deriving
+        it to obtain accelerations (if needed, currently not used)
+
+        Parameters
+        ----------
+        fc : float
+           cut-off frequency\n
+        K : float, optional
+            filter gain, set to 1 to avoid scaling the output value, by default 1
+        """
         self.low_pass_qd = Discrete_Low_Pass(
             dim=(self.num_joints+6),
             dt=self.dt_simulation, 
@@ -268,14 +341,29 @@ class Crawler:
             K=K)
     
     def set_low_pass_tau(self, fc, K=1):
+        """
+        Set cut-off frequency for the low pass filter acting on the tau applied to the joint
+
+        Parameters
+        ----------
+        fc : float
+           cut-off frequency\n
+        K : float, optional
+            filter gain, set to 1 to avoid scaling the output value, by default 1
+        """
         self.low_pass_tau = Discrete_Low_Pass(
             dim=self.state.nqd,
             dt=self.dt_simulation, 
             fc=fc*self.dt_simulation, 
             K=K)
-            
+    
     def COM_position_world(self):
-    #return the position of the center of mass in the world coordinates, as a NUMPY ARRAY
+        """
+        Returns
+        -------
+        np.array(3xfloat)
+            COM position referred to global reference frame
+        """
         COM = np.asarray(p.getBasePositionAndOrientation(self.Id)[0])*(p.getDynamicsInfo(self.Id, -1)[0])
         for i in range(0,self.num_joints):
             link_COM_pos = np.asarray(p.getLinkState(self.Id, i)[0])
@@ -285,7 +373,13 @@ class Crawler:
         return COM
 
     def COM_velocity_world(self):
-    #return the linear velocity of the center of mass in the world coordinates, as a NUMPY ARRAY
+        """
+        Returns
+        -------
+        np.array(3xfloat)
+            COM velocity referred to global reference frame
+        """
+        #return the linear velocity of the center of mass in the world coordinates, as a NUMPY ARRAY
         COMv = np.asarray(p.getBaseVelocity(self.Id)[0])*(p.getDynamicsInfo(self.Id, -1)[0])
         for i in range(0,self.num_joints):
             link_COM_vel = np.asarray(p.getLinkState(self.Id, i, computeLinkVelocity=1)[6])
@@ -295,21 +389,33 @@ class Crawler:
         return COMv
 
     def set_COM_y_ref(self):
-        # set the current COM y position as the one to measure error from
-            # (useful when trying to keep a fixed y position)
+        """
+        set the current COM y position as the one to measure error from
+        (useful when trying to keep a fixed y position)
+        """
         self.COM_y_ref = self.COM_position_world()[1]
 
     def turn_off_joint(self, joint_index):
-        p.setJointMotorControl2(self.Id, joint_index, controlMode=p.VELOCITY_CONTROL, force=0.0001)
+        """
+        Set a joint to move free without resistance (except friction and damping defined in the URDF)
+        Parameters
+        ----------
+        joint_index : int
+            index of the joint to turn off (PyBullet order)
+        """
+        p.setJointMotorControl2(self.Id, joint_index, controlMode=p.VELOCITY_CONTROL, force=0.0)
 
     def turn_off_crawler(self):
+        """
+        Apply turn_off_joint() to every joint in the model
+        """
         for i in range(0,p.getNumJoints(self.Id)):
             p.setJointMotorControl2(self.Id, i, controlMode=p.VELOCITY_CONTROL, force=0.0)
 
     def generate_control_indices(self):
-    # this function relies on knowledge of the order of the joints in the crawler model
-    # NOTE: if the URDF is modified in ways different than just adding more segments to the spine this function
-    # NEED TO be updated properly
+        # this function relies on knowledge of the order of the joints in the crawler model
+        # NOTE: if the URDF is modified in ways different than just adding more segments to the spine this function
+        # NEED TO be updated properly
         lat_joints_i = tuple(range(0,(self.num_joints-4),2))
         #abduction then flexion 
         r_leg_i = (self.num_joints-4, self.num_joints-3)
@@ -317,7 +423,13 @@ class Crawler:
         return (lat_joints_i,r_leg_i,l_leg_i)
 
     def fix_right_foot(self):
-        #constraint is generated at the origin of the center of mass of the leg, i.e. at center of the spherical "foot"
+        """
+        Fix the right foot with a spherical hinge joint at the center of the foot's spherical shape
+        Returns
+        -------
+        int
+            PyBullet's id for the constraint
+        """
         if self.constraints["right_foot"]:
             constId=self.constraints["right_foot"]
             print("Error: remove right foot constraint before setting a new one")
@@ -328,7 +440,13 @@ class Crawler:
         return constId
 
     def fix_left_foot(self):
-        #constraint is generated at the origin of the center of mass of the leg, i.e. at center of the spherical "foot"
+        """
+        Fix the left foot with a spherical hinge joint at the center of the foot's spherical shape
+        Returns
+        -------
+        int
+            PyBullet's id for the constraint
+        """
         if self.constraints["left_foot"]:
             constId=self.constraints["left_foot"]
             print("Error: remove left foot constraint before setting a new one")
@@ -339,14 +457,23 @@ class Crawler:
         return constId
     
     def free_right_foot(self):
+        """
+        remove right foot constraint
+        """
         p.removeConstraint(self.constraints["right_foot"])
         self.constraints["right_foot"]=0
 
     def free_left_foot(self):
+        """
+        remove left foot constraint
+        """
         p.removeConstraint(self.constraints["left_foot"])
         self.constraints["left_foot"]=0    
 
     def invert_feet(self):
+        """
+        Invert how the feet are constrained
+        """
         if self.constraints["right_foot"]:
             self.free_right_foot()
         else:
@@ -357,6 +484,13 @@ class Crawler:
             self.fix_left_foot()
 
     def fix_tail(self, second_last = False):
+        """
+        Fix the last link with a spherical hinge joint at the center of the spherical shape
+        Returns
+        -------
+        int
+            PyBullet's id for the constraint
+        """
         #constraint is generated at the origin of the center of mass of the last link
         if self.constraints["last_link"]:
             constId=self.constraints["last_link"]
@@ -370,10 +504,16 @@ class Crawler:
         return constId
     
     def free_tail(self):
+        """
+        remove tail constraint
+        """
         p.removeConstraint(self.constraints["last_link"])
         self.constraints["last_link"]=0 
 
     def set_links_state_array(self):
+        """
+        Update the data in self.links_state_array
+        """
         #NOTE: this doesn't include the state of the base to keep the correct id-numbers of the links
         for i in range(0,self.num_joints):
             link_state = p.getLinkState(self.Id,
@@ -392,32 +532,27 @@ class Crawler:
         return    
 
     def get_joints_pos_tuple(self):
+        """
+        Returns a tuple with the current position of each joint of the model
+        """
         return list(zip(*(p.getJointStates(self.Id,list(range(0,self.num_joints))))))[0]
 
-    # def get_joints_speeds_tuple(self):
-    #     return list(zip(*(p.getJointStates(self.Id,list(range(0,self.num_joints))))))[1]
-
-    # def set_velocities(self):
-    #     ### To be called after each simulation step
-    #     self.joints_speeds_prev = self.joints_speeds_curr
-    #     self.joints_speeds_curr = np.array(self.get_joints_speeds_tuple())
-    #     tmp = p.getBaseVelocity(self.Id)
-    #     self.base_velocity_prev = self.base_velocity_curr
-    #     self.base_velocity_curr = np.concatenate((np.array(tmp[0]), np.array(tmp[1])))
-    #     self.qd_prev = np.concatenate((self.base_velocity_prev,self.joints_speeds_prev))
-    #     self.qd_curr = np.concatenate((self.base_velocity_curr,self.joints_speeds_curr))
-    #     return
-
-    # def get_q(self):
-    #     # qb = pos(xyz), orient(xyzw (quaternion))
-    #     tmp_b = p.getBasePositionAndOrientation(self.Id)
-    #     q = np.array((tmp_b[0] + tmp_b[1] + self.get_joints_pos_tuple()))
-    #     return q
-
     def get_base_Eulers(self):
+        """
+        Returns
+        -------
+        list [3xfloat]
+            Euler's angle (XYZ) desribing the base orientation
+        """
         return  p.getEulerFromQuaternion(p.getBasePositionAndOrientation(self.Id)[1])
     
     def get_R_base_to_world(self):
+        """
+        Returns
+        -------
+        np.array[3,3 matrix]
+            Rotation matrix such that R * x_base = x_world
+        """
         # returned as a (3,3) NUMPY ARRAY
         # R * x_base = x_world
         quat_base = p.getBasePositionAndOrientation(self.Id)[1]
@@ -425,19 +560,32 @@ class Crawler:
         return R
     
     def get_link_COM_jacobian_trn_world(self, link_index, R):
-        # Compute the Jacobian for the COM of a single link, referred to world global coordinates.
-        # R should be passed already computed (through the proper class methods) to avoid recomputing them
-            # even if the simulation has not stepped between two calls and the state is still the same.
-        # For the same reason self.set_links_state_array() should be called once (every time-step) just before using this function.
-        #NOTE (see report): p.calculateJacobian outputs a Jacobian that gives the linear/angular velocity expressed
-            # in a reference frame oriented like the base but fixed in the global reference frame
-            # To get the velocities in the global reference frame we should transform the Jacobian (see report)
-        # Jtbtw stands for 
-            # Jacobian(for the)Translational(motion; columns multiplying the)Base_Translational(components; referred to the)_World(reference frame)
-        # p.calculateJacobian() gives a Jacobian with first the base rotation and then the base translation:
-            # this Jacobian is rearranged so that it should multiply a state 
-            # composed as (base_translation, base_rotation, joints), as usual
-        ###
+        """
+        Compute the Jacobian for the translational velocity of COM of a single link,
+        referred to world global coordinates\n
+        vCOMi = J*qd
+
+        Parameters
+        ----------
+        link_index : int\n
+
+        R
+            should be passed already computed through the proper class method, self.get_R_base_to_world()
+
+        Returns
+        -------
+        np.array[3,n matrix]
+            Jacobian matrix
+
+        Notes
+        -------
+        Since p.calculateJacobian() outputs a Jacobian that gives the linear/angular velocity expressed 
+        in a reference frame oriented like the base but fixed in the global reference frame.\n
+        This Jacobian is transformed to be used with values expressed in global coordinates (see Thesis report)\n
+        Furthemore, p.calculateJacobian() gives a Jacobian with first the base rotation and then the base translation:
+        this Jacobian is rearranged so that it should multiply a state 
+        composed as (base_translation, base_rotation, joints), as usual
+        """
         joints_pos = self.get_joints_pos_tuple()
         J = np.asarray(
             p.calculateJacobian(self.Id,
@@ -463,10 +611,22 @@ class Crawler:
         return Jtw_i
 
     def get_COM_trn_jacobian(self):
-        #Jacobian of the COM is computed as the weighted mean (with respect to masses) of the Jacobian of the links
-        #The transational jacobian of the base is just the identity matrix multiplying the base translational velocity
-            # plus null terms associated to the base angular speed and the joints speed terms (thus 3+self.num_joints)
-            # NOTE: angular speed values are null just because the COM of the girdle link coincides with the origin of the link frame
+        """
+        Compute the translational Jacobian of the center of the mass of the whole model, referred to
+        global reference frame
+
+        Returns
+        -------
+        np.array[3,n matrix]
+            Jacobian matrix
+
+        Notes
+        -------
+        Jacobian of the COM is computed as the weighted mean (with respect to masses) of the Jacobian of the links.\n
+        The transational jacobian of the base is just the identity matrix multiplying the base translational velocity
+        plus null terms associated to the base angular speed and the joints speed terms (thus 3+self.num_joints).\n
+        Angular speed values are null just because the COM of the girdle link coincides with the origin of the link frame.
+        """
         R = self.get_R_base_to_world()
         ###
         Jbase_t = np.asarray([  [1.0,0.0,0.0] + [0.0]*3 + [0.0]*(self.num_joints),
@@ -482,21 +642,45 @@ class Crawler:
         #returned as NUMPY ARRAY
         return JM_t
 
-    # def set__COM_trn_jacobian(self):
-    #     self.JM = self.get_COM_trn_jacobian()
-
     def solve_null_COM_y_speed_optimization(self, K, k0=1, verbose=False):
-        #Return the desired joint speeds of the spinal lateral joints to be used for velocity control
-        #NOTE: self.COM_y_ref should be set once at the start of each step phase
-        #NOTE: since the dorsal joints of the spine and the DOFs of the base are not actuated, xd_desired 
-            # is corrected (see report). Joints of the girdles are also not considered as actuated since their 
-            # speed is set independently
-        #Use constrained (convex) optimization to solve inverse kinematic, coupled with closed loop inverse kinematic
-            #to (try to) make the error converge esponentially
+        """
+        Solve Closed-loop Inverse Kinematics for the spinal lateral joints,
+        for having a null y-axis speed of the model's COM
+
+        Parameters
+        ----------
+        K : float
+            Gain of the closed loop 
+        k0 : float, optional
+            parameters for the gradient descent, used for choosing the values of the additional joints speeds
+            in the nullspace of the Jacobian, by default 1
+        verbose : bool, optional
+             by default False
+
+        Returns
+        -------
+        tuple
+            (qda, eCOMy)\n
+            qda = np.array, desired spinal lateral joints' velocities\n
+            eCOMy = float, error on the position of the center of mass, computed using the value set with 
+            self.set_COM_y_ref()
+
+        Notes
+        -------
+        See report for the mathematical description
+        self.COM_y_ref() should be called once at the start of each step phase.\n
+        Since the dorsal joints of the spine and the DOFs of the base are not actuated, xd_desired not equal to 0 but
+        is corrected (see Thesis' report). The joints of the girdles are also not considered as actuated since their 
+        speed is set independently.\n
+        An additional control target can be followed through the choice q0da, that doesn't affect the primary 
+        target due to the projection in the Jacobian's null space done by P. Here qd0a is chosen as the 
+        gradient descent of a function to optimize.
+        """
         #q0d are projected inside the nullspace of the Jacobian (J) and can be chosen to minimize a cost function
-            # Chosen cost function is H(q)=sum(q_i ^2), to keep joints as near to 0 as possible while respecting the requirements
-            # given by inverse kinematics.
-            # H(q) minimum is found through gradient descent, by chosing q0d=-k0*gradient(H(q)) (easy for quadratic H(q))
+            # Here, the chosen cost function is H(q)=sum(q_i ^2), to keep joints as near to 0 as possible while
+            # respecting the requirements given by inverse kinematics.
+            # H(q) minimum is found through gradient descent, by chosing q0d=-k0*gradient(H(q))
+            # (easy for quadratic H(q))
         #NOTE: refer to the notation in the report
         ###
         qd = np.reshape(self.state.qd,(self.state.qd.shape[0],1))
@@ -540,8 +724,27 @@ class Crawler:
         return (qda, eCOMy)
 
     def generate_fmax_array_lateral(self,fmax_last):
-        # Generate the fmax array for the lateral joints 
-        # to be used with position or velocity control, like with self.controlV_spine_lateral()
+        """
+        Generate an array with the max force value of the lateral joints
+
+        Parameters
+        ----------
+        fmax_last : float
+            maximum force(/torque) that the last spinal joint should exert
+
+        Returns
+        -------
+        list(float)
+
+        Notes
+        -------
+        The maximum forces are computed by increasing linearly fmax_last toward the center of the spine
+        (and then decreasing it again for the joints toward the head),
+        since the mid-section of the body needs to move a greater mass.\n
+        The generated array is meant to be used when calling functions like p.SetMotorControlArray()
+        with position or velocity control mode, in particular its made to be passed directly
+        when calling the method self.controlV_spine_lateral()
+        """
         fmax_array = list()
         half_spine_index = int(len(self.control_indices[0])/2)
         end_spine_index = len(self.control_indices[0])
