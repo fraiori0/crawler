@@ -1639,6 +1639,30 @@ class Crawler:
         return q_time_array, qd_time_array, qdd_time_array
     
     def combined_cosine_fun(self,A,f1,n,t_off=0,delta=0, bias=0):
+        """[TO BE DOCUMENTED IN THE REPORT]
+        Generate a periodic signal combining two cosine function. It's suggested to plot the signal to see
+        how different parameters affect the signal's shape
+
+        Parameters
+        ----------
+        A : [float]
+            amplitude\n
+        f1 : [float]
+            main frequency\n
+        n : [int]
+            ratio f2/f1\n
+        t_off : float, optional
+            time offset of the whole signal, by default 0\n
+        delta : float, optional
+            angle offset of second cosine, by default 0\n
+        bias : float, optional
+            bias, by default 0
+
+        Returns
+        -------
+        [function]
+            return a lambda function such that calling fun(t) generate the signal value for time t
+        """
         # f1 and f2 must generate a periodic signal with periodicity at least that of the 
         # walking cycle (f_walk = 1/(2*t_stance))
         # to simplify this, f1 is considered as equal to f_walk and f2 = n * f1, with n an integer number
@@ -1650,6 +1674,36 @@ class Crawler:
         return fun
     
     def get_torques_profile_fun(self, A, f1, n, t_off, delta, bias):
+        """[TO BE DOCUMENTED IN THE REPORT]
+        Generate torques for all ACTUATED joints, based on self.combined_cosine_fun()
+
+        Parameters
+        ----------
+        A : [tuple(tuple,tuple,tuple)]
+            Check parameter of self.combined_cosine_fun()\n
+        f1 : [tuple(tuple,tuple,tuple)]
+            Check parameter of self.combined_cosine_fun()\n
+        n : [tuple(tuple,tuple,tuple)]
+            Check parameter of self.combined_cosine_fun()\n
+        t_off : [tuple(tuple,tuple,tuple)]
+            Check parameter of self.combined_cosine_fun()\n
+        delta : [tuple(tuple,tuple,tuple)]
+            Check parameter of self.combined_cosine_fun()\n
+        bias : [tuple(tuple,tuple,tuple)]
+            Check parameter of self.combined_cosine_fun()\n
+
+        Returns
+        -------
+        [tuple(tuple,tuple,tuple)]
+            nested tuple (see Warnings) containing lambda function that generates signal based on the parameters
+            given as input. Example, calling output_to_this_fun[0][1](t) return the value, at time t, associated to 
+            the second lateral joint of the spine.
+
+        Warnings
+        -------
+        Everything (both the input and the output of this function) should be packed as a nested tuple 
+        like self.control_indices. -->  ((spine_lateral),(r_abd,r_flex),(l_abd, l_flex))
+        """
         # Variables should be passed as nested tuple,
             # packed like control_indices ((spine_lateral),(r_abd,r_flex),(l_abd, l_flex))
         # Returns a nested tuple (packed like control_indices) of lambda functions, all dependent only on t
@@ -1675,7 +1729,27 @@ class Crawler:
         tau_left_fun = tuple(tau_left_fun)
         return (tau_lat_fun, tau_right_fun, tau_left_fun)
     
-    def generate_torques_time_array(self,tau_array_fun,duration,t0=0, include_base=True):
+    def generate_torques_time_array(self,tau_array_fun,duration,t0=0., include_base=True):
+        """Generate an array containing the time-series of the desired torque value
+        for each joint(/each DOF, if base is included)
+
+        Parameters
+        ----------
+        tau_array_fun : [nested tuple]
+            , output of self.get_torques_profile_fun()
+        duration : [float]
+            time span defining for how long the trajectory should be generated\n
+        t0 : float, optional
+            start time of the time-series, by default 0.
+        include_base : bool, optional
+            prepend values for the base DOF, by default True
+
+        Returns
+        -------
+        [np.array]
+            time-series of the torque values for each joint. output_to_this_fun[i,:] return the array containing 
+            the values for each joint at the i-th step
+        """
         # input should be the output of torques_profile_fun, packed lambda function depending only on t
         # the output contains, as rows,the value of the torque to apply at each joint (even the passive ones, equal to 0)
         steps = int(duration/self.dt_simulation)
