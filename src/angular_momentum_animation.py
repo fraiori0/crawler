@@ -7,8 +7,11 @@ import imageio
 import imageio.plugins.pillow
 import scipy.integrate as integrate
 import scipy as sp
+import os
 
+parentDirectory = os.path.abspath(os.path.join(os.getcwd(), os.pardir))
 matplotlib.use('TkAgg')
+
 #video
 duration = 10
 fps = 80
@@ -16,12 +19,12 @@ dt = 1/fps
 frames = int(fps*duration)
 time_array = np.linspace(0.0, duration, num=frames)
 # imageio set-up
-title="Conservation of AM - Orbit"
+title="PROVA"
 video_name = title+".mp4"
-video_path = "./animations_matplotlib/" + video_name
+video_path = os.path.join(parentDirectory,"./animations_matplotlib/", video_name)
 writer = imageio.get_writer(video_path, fps=fps)
 fig_name = "last_frame.jpg"
-fig_path = "./animations_matplotlib/" + fig_name
+fig_path = os.path.join(parentDirectory,"./animations_matplotlib/", fig_name)
 #matplotlib set-up
 fig = plt.figure()
 ax = fig.add_subplot(111)
@@ -135,6 +138,7 @@ for i in range(frames):
     img = np.frombuffer(fig.canvas.tostring_rgb(), dtype='uint8')
     img  = img.reshape(fig.canvas.get_width_height()[::-1]+(3,))
     writer.append_data(img)
+    plt.show()
     ax.clear()
 
 

@@ -44,11 +44,6 @@
 
   <xacro:property name="VISUAL_BOX_RATIO" value="0.05" />
 
-  <!--MASS SCALING-->
-  <!--Values taken from the 5-bars model-->
-  <xacro:property name="KB" value="${(0.456-0.196)/(BODY_LENGTH*0.37)}" />
-  <xacro:property name="KT" value="${(0.218-0.456)/(BODY_LENGTH*0.49)}" />
-  <xacro:property name="M0" value="${(BODY_MASS - KB*SPINE_SEGMENT_LENGTH*(N_HALF*(N_HALF+1))/2 - KT*SPINE_SEGMENT_LENGTH*((SPINE_SEGMENTS_NUMBER-N_HALF)*(SPINE_SEGMENTS_NUMBER-N_HALF+1))/2)/SPINE_SEGMENTS_NUMBER}" />
 
 <!--########### COLORS used for the links ###########-->
 <!--colors are currently implemented as macro because just defining them, as shown in the ROS tutorial, seems not to work-->

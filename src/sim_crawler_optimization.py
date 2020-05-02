@@ -11,8 +11,10 @@ import subprocess as sp
 import imageio
 from hyperopt import fmin, tpe, hp, STATUS_OK, Trials, pyll
 import pandas as pd
+import os
 
 matplotlib.use('TkAgg')
+parentDirectory = os.path.abspath(os.path.join(os.getcwd(), os.pardir))
 
 
 def run_simulation(dt, t_stance, duration,
@@ -20,7 +22,7 @@ def run_simulation(dt, t_stance, duration,
     theta_rg0, theta_lg0, A_lat_0, theta_lat_0,
     girdle_friction, body_friction, leg_friction,
     keep_in_check=True, soft_constraints=False,
-    graphic_mode=False, plot_graph=False, video_logging=False, video_name="./video/dump/dump"):
+    graphic_mode=False, plot_graph=False, video_logging=False, video_path="./video/trash/trash.mp4"):
     # dt, t_stance, duration = time parameter, dt MUST be the same used to create the model
     # A,f1,n,t2_off,delta_off,bias = parameters for the generation of the torques
     # theta_rg0, theta_lg0, A_lat_0, theta_lat_0= parameters for setting the starting position
@@ -108,7 +110,7 @@ def run_simulation(dt, t_stance, duration,
         p.configureDebugVisualizer(p.COV_ENABLE_GUI,0)
         p.resetDebugVisualizerCamera(cameraDistance=1, cameraYaw = 50, cameraPitch=-60, cameraTargetPosition=[0.5,0,0])
     if (video_logging and graphic_mode):
-        video_writer = imageio.get_writer(video_name, fps=int(1/dt))
+        video_writer = imageio.get_writer(video_path, fps=int(1/dt))
     ##########################################
     ####### PERFORMANCE EVALUATION ###########
     loss = 0.0
@@ -337,6 +339,7 @@ def run_bayesian_optimization(objective_function,param_dist,iterations,filename=
     best_param_values = [x for x in best_param.values()]
     print("Best loss obtained: %f\n with parameters: %s" % (min(losses), best_param_values))
     if save:
+        # set "save" to True to save the data in a CSV file
         dict_csv={}
         dict_csv.update({'Score' : []})
         for key in vals[0]:
@@ -347,7 +350,8 @@ def run_bayesian_optimization(objective_function,param_dist,iterations,filename=
             dict_csv['Score'].append(losses[index])
         df = pd.DataFrame.from_dict(dict_csv, orient='columns')
         df = df.sort_values("Score",axis=0,ascending=True)
-        df.to_csv(path_or_buf=("./optimization results/"+filename),sep=',', index_label='Index')
+        df.to_csv(path_or_buf=os.path.join(parentDirectory, "./optimization results/", filename),
+        sep=',', index_label='Index')
 
 param_dist = {
     "A_lat": hp.uniform("A_lat",0.05,0.1),
@@ -396,7 +400,7 @@ if True:
             ),
             keep_in_check=True,soft_constraints=False,
             graphic_mode=True, plot_graph=True,
-            video_logging=True, video_name="./optimization results/video/best_ultraultraweak_02_friction_goforward.mp4"
+            video_logging=True, video_path=os.path.join(parentDirectory, "./optimization results/prova.mp4")
         )
     print("loss: ",loss)
 
