@@ -8,23 +8,59 @@ from math import *
 import pinocchio as pin
 
 class Discrete_Low_Pass:
+    """Create a first order discrete low-pass filter
+    x(k+1) = (1-dt*fc)*x(k) + K*dt*fc*u(k)
+    """
     def __init__(self, dim, dt, fc, K=1):
-        #fc is the cut-off frequency
-        #since each filter keeps a internal state, a different filter should 
-            # be intialized for each signal to filter
+        """initialize the filter
+
+        Parameters
+        ----------
+        dim : [float]
+            dimension of the input signal (1D-array,
+            each component filtered as a separate signal)\n
+        dt : [float]
+            sampling time\n
+        fc : [float]
+            cut-off frequency\n
+        K : int, optional
+            filter's gain, by default 1\n
+
+        Warnings
+        -------
+        Each filter keeps a internal state, so a different filter object should 
+            be initialized for each 1-dimensional signal.\n
+        Different signals shouldn't be passed to the same filter.
+        """
         self.dim = dim
         self.x = np.array([0]*self.dim)
         self.dt = dt
         self.fc = fc
         self.K = K
     def reset(self):
+        """Reset filter's state to an array of 0s
+        """
         self.x = np.array([0]*self.dim)
     def filter(self, signal):
+        """Give input and update the filter's state(=output) accordingly
+
+        Parameters
+        ----------
+        signal : [np.array(self.dim)]
+            input signal
+
+        Returns
+        -------
+        [np.array(self.dim)]
+            filter state, equal to the output of the filter
+        """
         # input signal should be a NUMPY ARRAY
         self.x = (1-self.dt*self.fc)*self.x + self.K*self.dt*self.fc * signal
         return self.x
 
 class Integrator_Forward_Euler:
+    """Forward-Euler integrator
+    """
     def __init__(self, dt, x0):
         self.dt = dt
         self.x = np.array(x0)
@@ -917,6 +953,8 @@ class Crawler:
         return q_des, qd_des, qdd_des, e
     
     def generate_joints_trajectory_stop(self, theta0, thetaf, ti, t_stance, qa_des, qda_des, qdda_des):
+        """[DEPRECATED - ONLY FOR TESTING]
+        """
         #ti = time from start of the walking locomotion, t_stance = total (desired) stance phase duration
         # RL=0 if right leg stance, 1 if left leg stance (stance leg is the one with the constraied foot)
         # q[3:6] must be a quaternion
@@ -1024,7 +1062,7 @@ class Crawler:
         return tau_act_closed_loop, np.ndarray.flatten(e)
     
     def solve_computed_torque_control_sliding(self, q_des, qd_des, qdd_des, Kp, Kv, rho, verbose=False): 
-        """
+        """[DEPRECATED]
         Similar to self.solve_computed_torque_control() but add a sliding term to apply a continuous sliding mode
         control.
         Currently doesn't really improve the CTC, possibily due to discretization (chattering) and bad disturbance
@@ -1085,14 +1123,28 @@ class Crawler:
         delta = rho * sliding_vector/(lna.norm(sliding_vector))
         return delta
 
-    def apply_torques(self, tau_des, filtered=True, passive_body=False):
-        # filtered version is better to avoid applying discontinuous torques to the joints
+    def apply_torques(self, tau_des, filtered=True):
+        """Apply desired torques to the joints
+
+        Parameters
+        ----------
+        tau_des : [np.array((6+#joints,),float)]
+            array containing the torque desired for each DOF.
+            Torques from this array will only be applied to the actuated DOF (shoulders' and spinal lateral joints).\n
+        filtered : bool, optional
+            Filter the desired torques with self.low_pass_tau, by default True.\n
+            Filtered version is better to avoid applying discontinuous torques to the joints
+
+        Returns
+        -------
+        [np.array((6+#joints,),float)]
+            Array with the applied torques. If filtered=False it's equal to the input tau_des
+        """
+        # 
         if filtered:
             tau = self.low_pass_tau.filter(tau_des)
         else: 
             tau = tau_des
-        if passive_body:
-            tau[self.mask_act] = np.zeros(len(self.control_indices[0]))
         #flatten control_indices to use for setting torques with a single loop
         indexes = [i for index_tuple in self.control_indices for i in index_tuple]
         for joint_i in indexes:
@@ -1103,7 +1155,7 @@ class Crawler:
                 force=tau[joint_i + self.state.nqbd]
                 )
             #print("joint_i: ", joint_i, "tau %d: " %(joint_i + self.state.nqbd), np.round(tau[joint_i + self.state.nqbd],3))
-        # Uncomment to use velocity control on the flexion movement
+        ### Uncomment to use velocity control on the flexion movement
         # p.setJointMotorControl2(
         #         self.Id, 
         #         self.control_indices[1][1], 
@@ -1121,17 +1173,32 @@ class Crawler:
         return tau
     
     def generate_Kp(self, Kp_lat, Kp_r_abd, Kp_l_abd, Kp_flex):
+        """Generate proportional gain matrix for Computed Torque Control
+
+        Parameters
+        ----------
+        Kp_lat : [float]
+            minimum proportional gain of the lateral joints\n
+        Kp_r_abd : [float]
+            right-abduction proportional gain\n
+        Kp_l_abd : [float]
+            left-abduction proportional gain\n
+        Kp_flex : [float]
+            flexion proportional gain
+
+        Returns
+        -------
+        [np.array()]
+            Proportional gain matrix
+        
+        Notes
+        -------
+        The lateral gain are generated starting from Kp_lat and scaling them exponentially
+        (1.2 factor) toward the center of the body.\n
+        See line with comment "# i-th lateral joint" to modify how they are scaled.
+        """
         nlat_joints = (self.state.nqd-6-4)//2
         Kp_spinal_list = list()
-        #Kp_lat_multiplier = list(range(1,1+(nlat_joints//2))) + list(reversed(range(1, 1+(nlat_joints+1)//2)))
-        #If the next line is not commented the lateral joints will have decreasing values
-        # starting from the girdle, otherwise they will have the max value at the center of the body
-        # If the foot act as fixed contraint leave this line uncommented.
-        # Kp_lat is always the minimum gain
-        # Kp_lat_multiplier = list(reversed(range(1,nlat_joints+1)))
-        # for val in Kp_lat_multiplier:
-        #     Kp_spinal_list.append(val*Kp_lat)   # i-th lateral joint
-        #     Kp_spinal_list.append(0)            # i-th dorsal joint
         for i in reversed(range(1,nlat_joints+1)):
             Kp_spinal_list.append(Kp_lat*((1.2)**i))   # i-th lateral joint
             Kp_spinal_list.append(0)            # i-th dorsal joint
@@ -1146,17 +1213,32 @@ class Crawler:
         return Kp
 
     def generate_Kv(self, Kv_lat, Kv_r_abd, Kv_l_abd, Kv_flex):
+        """Generate derivative gain matrix for Computed Torque Control
+
+        Parameters
+        ----------
+        Kv_lat : [float]
+            minimum derivative gain of the lateral joints\n
+        Kv_r_abd : [float]
+            right-abduction derivative gain\n
+        Kv_l_abd : [float]
+            left-abduction derivative gain\n
+        Kv_flex : [float]
+            flexion derivative gain
+
+        Returns
+        -------
+        [np.array()]
+            Derivative gain matrix
+        
+        Notes
+        -------
+        The lateral gain are generated starting from Kv_lat and scaling them exponentially
+        (1.2 factor) toward the center of the body.\n
+        See line with comment "# i-th lateral joint" to modify how they are scaled.
+        """
         nlat_joints = (self.state.nqd-6-4)//2
         Kv_spinal_list = list()
-        #Kv_lat_multiplier = list(range(1,1+(nlat_joints//2))) + list(reversed(range(1, 1+(nlat_joints+1)//2)))
-        #If the next line is not commented the lateral joints will have decreasing values
-        # starting from the girdle, otherwise they will have the max value at the center of the body
-        # If the foot act as fixed contraint leave this line uncommented.
-        # Kp_lat is always the minimum gain
-        # Kv_lat_multiplier = list(reversed(range(1,nlat_joints+1)))
-        # for val in Kv_lat_multiplier:
-        #     Kv_spinal_list.append(val*Kv_lat)   # i-th lateral joint
-        #     Kv_spinal_list.append(0)            # i-th dorsal joint
         for i in reversed(range(1,nlat_joints+1)):
             Kv_spinal_list.append(Kv_lat*((1.2)**i))   # i-th lateral joint
             Kv_spinal_list.append(0)            # i-th dorsal joint
@@ -1171,15 +1253,36 @@ class Crawler:
         return Kv
 
     def generate_fmax_list(self, fmax_lat, fmax_r_abd, fmax_l_abd, fmax_flex):
-        # Generate the list of fmax for the joints, to be used with PD control
+        """Generate the list of maximum force allowed for the joints, to be used with
+        the P or PD control already implemented in PyBullet
+
+        Parameters
+        ----------
+        fmax_lat : [float]
+            minimum value of the max torque of the lateral joints.
+            See inline comments to see how this value is scaled along the body\n
+        fmax_r_abd : [float]
+            max right-abduction torque\n
+        fmax_l_abd : [float]
+            max left-abduction torque\n
+        fmax_flex : [float]
+            max flexion torque
+
+        Returns
+        -------
+        [list(#joints)]
+            List of maximum torques that the joints can apply, to be used with to p.SetJointMotorControl2.
+            The list include 0 for the passive spinal dorsal joints, to keep index consistency and allow selection 
+            through self.control_indices
+        """
+        # 
         nlat_joints = (self.state.nqd-6-4)//2
         lat_multiplier = list(range(1,1+(nlat_joints//2))) + list(reversed(range(1, 1+(nlat_joints+1)//2)))
         fmax_spinal_list = list()
         #If the next line is not commented the lateral joints will have decreasing values
-            # starting from the girdle, otherwise they will have the max value at the center of the body
-            # If the foot act as fixed contraint leave this line uncommented.
-            # fmax_lat is always the minimum value
-        lat_multiplier = list(reversed(range(1,nlat_joints+1)))
+            ## starting from the girdle, otherwise they will have the max value at the center of the body
+            ## If the foot act as fixed constraint leave this line uncommented.
+        #lat_multiplier = list(reversed(range(1,nlat_joints+1)))
         for val in lat_multiplier:
             fmax_spinal_list.append(val*fmax_lat)   # i-th lateral joint
             fmax_spinal_list.append(0)              # i-th dorsal joint
@@ -1261,7 +1364,29 @@ class Crawler:
                 )
         return qd_des
     
-    def control_leg_abduction(self, RL, theta0, thetaf, ti, t_stance, fmax=1, positionGain=1, velocityGain=0.5):
+    def control_leg_abduction(self, RL, theta0, thetaf, ti, t_stance, fmax=1., positionGain=1., velocityGain=0.5):
+        """Call p.setJointMotorControl2() for the abduction joint of the selected leg, to follow
+            report's trajectory (cosine function)
+        
+        Parameters
+        ----------
+        RL : [int] 0 or 1
+            0 for right leg, 1 for left leg\n
+        theta0 : [float, radians]
+            check report on cosine function for abduction\n
+        thetaf : [float, radians]
+            check report on cosine function for abduction\n
+        ti : [float]
+            time from the start of the current step\n
+        t_stance : [type]
+            stance phase duration (50% symmetric duty cycle)\n
+        fmax : flaot, optional
+            max torque, by default 1.\n
+        positionGain : int, optional
+            p.setJointMotorControl2() parameter, by default 1.\n
+        velocityGain : float, optional
+            p.setJointMotorControl2() parameter, by default 0.5
+        """
         #ti = time from start of the stance phase, t_stance = total (desired) stance phase duration
         #RL = 0 for right leg, 1 for left leg
         RL=int(RL)
@@ -1279,6 +1404,20 @@ class Crawler:
         return
     
     def control_leg_flexion(self, RL, fmax=1, positionGain=1, velocityGain=0.5):
+        """Call p.setJointMotorControl2() for the flexion joint of the selected leg,
+        to keep position at self.neutral_contact_angle
+        
+        Parameters
+        ----------
+        RL : [int] 0 or 1
+            0 for right leg, 1 for left leg\n
+        fmax : flaot, optional
+            max torque, by default 1.\n
+        positionGain : int, optional
+            p.setJointMotorControl2() parameter, by default 1.\n
+        velocityGain : float, optional
+            p.setJointMotorControl2() parameter, by default 0.5
+        """
         #RL = 0 for right leg, 1 for left leg
         RL=int(RL)
         if (RL!=0 and RL!=1):
@@ -1295,6 +1434,25 @@ class Crawler:
         return
     
     def set_bent_position(self, theta_rg, theta_lg, A_lat, theta_lat_0):
+        """Set the model in a bent position, position of the spinal lateral joints is
+        generated using a traveling wave.
+
+        Parameters
+        ----------
+        theta_rg : [float]
+            right abduction angle\n
+        theta_lg : [float]
+            left abduction angle\n
+        A_lat : [float]
+            amplitude of the traveling wave\n
+        theta_lat_0 : [float]
+            offset of the traveling wave
+
+        Notes
+        -------
+        Traveling wave's wavelength is twice the body-length
+
+        """
         #Body is set using traveling wave equation for t=0
         n_lat = len(self.control_indices[0])
         for i, joint_i in enumerate(self.control_indices[0]):
@@ -1307,6 +1465,24 @@ class Crawler:
         return
     
     def traveling_wave_lateral_trajectory_t(self,t,A,f,th0):
+        """Use a traveling wave equation to generate desired trajectory for the spinal lateral joints
+
+        Parameters
+        ----------
+        t : [float]
+            time\n
+        A : [float]
+            amplitude of the traveling wave\n
+        f : [float]
+            frequency of the traveling wave, tipically 1/(2*t_stance)\n
+        th0 : [float]
+            offset of the traveling wave
+
+        Returns
+        -------
+        [tuple]
+            (qa,qda,qdda) tuple of numpy.array containing desired pos,vel,acc ONLY of the spinal lateral joints
+        """
         # f = frequency, set to 2*stance_duration (it's the frequency of the walking behaviour)
         n_lat = len(self.control_indices[0])
         qa = np.arange(n_lat)
@@ -1318,16 +1494,70 @@ class Crawler:
         return qa, qda, qdda
     
     def abduction_trajectory_t(self, t, th0, thf, f, th_offset):
-        # f = frequency, set to 1/(2*stance_duration) (it's the frequency of the walking behaviour)
-        # it's almost a duplicate of generate_abduction_trajectory()
-            # it include the offset input, so it's easier to set left and right lef (they differ from pi)
+        """it's almost a duplicate of self.generate_abduction_trajectory().
+        
+
+        Parameters
+        ----------
+        t : [float]
+            Time\n
+        th0 : [float]
+            Start angle of the trajectory. See report on the cosine function used for abduction\n
+        thf : [float]
+            Finish angle of the trajectory. See report on the cosine function used for abduction\n
+        f : [float]
+            Frequency of the movement, tipically 1/(2*t_stance)\n
+        th_offset : [type]
+            Offset of the trajectory. Tipically left leg has a Pi offset with respect to the right one\n
+
+        Returns
+        -------
+        [tuple]
+            desired pos,vel,acc for a joint
+
+        Notes
+        -------
+        Include the th_offset input so that, instead of selecting right or left leg,
+        trajectories can be generated with the same function just by using an offset equal to Pi
+        """
         theta = (th0+thf)/2 + (th0-thf)*cos(2*pi*f*t + th_offset)/2
         thetad = -2*pi*f*(th0-thf)*sin(2*pi*f*t + th_offset)/2
         thetadd = -2*pi*f*2*pi*f*(th0-thf)*cos(2*pi*f*t + th_offset)/2
         return theta, thetad, thetadd
     
     def compose_joints_trajectories_t(self, t, f, A_lat,th0_lat, th0_abd, thf_abd, include_base = False):
-        # generates an array with the trajectory of all the joints, ordered, at time=t
+        """Generates arrays with the desired pos,vel,acc of all the joints,
+        ordered correctly following PyBullet indexing of model's joints, at time=t
+
+        Parameters
+        ----------
+        t : [float]
+            Time\n
+        f : [float]
+            Frequency of the movements\n
+        A_lat : [float]
+            Amplitude of the traveling wave for spinal lateral joint trajectories\n
+        th0_lat : [float]
+            Offset of the traveling wave for spinal lateral joint trajectories\n
+        th0_abd : [float]
+            Start angle of the abduction trajectory\n
+        thf_abd : [float]
+            Finish angle of the abduction trajectory\n
+        include_base : bool, optional
+            Prepend the state of the base (and its derivative) to the returned array, by default False
+
+        Returns
+        -------
+        [tuple]
+            desired pos,vel,acc of all the joints of the model
+        
+        Notes
+        -------
+        Trajectories are generated using a traveling wave for the spinal lateral joints,
+        the report's cosine function for the abduction joints. Check code for the flexion movement.
+        Desired values of pos,vel,acc of the passive joints (and the base) are set to the current real value.
+        """
+        #
         # similar to generate_joints_trajectories()
         qj = np.zeros(self.num_joints)
         qdj = np.zeros(self.num_joints)
@@ -1344,8 +1574,8 @@ class Crawler:
         qddj[self.control_indices[1][0]] = qddra
         # right flexion
         qj[self.control_indices[1][1]] = self.neutral_contact_flexion_angle + 0.03*np.sin(2*pi*f*t)
-        qdj[self.control_indices[1][1]] = 0.
-        qddj[self.control_indices[1][1]] = 0.
+        qdj[self.control_indices[1][1]] = 0. + 0.03*2*pi*f*np.cos(2*pi*f*t)
+        qddj[self.control_indices[1][1]] = 0. - 0.03*2*pi*f*2*pi*f*np.sin(2*pi*f*t)
         # left abduction
         qla,qdla,qddla = self.abduction_trajectory_t(t,th0_abd,thf_abd,f,th_offset=pi)
         qj[self.control_indices[2][0]] = -qla
@@ -1353,8 +1583,8 @@ class Crawler:
         qddj[self.control_indices[2][0]] = -qddla
         # left flexion
         qj[self.control_indices[2][1]] = -self.neutral_contact_flexion_angle + 0.03*np.sin(2*pi*f*t + pi)
-        qdj[self.control_indices[2][1]] = 0.
-        qddj[self.control_indices[2][1]] = 0.
+        qdj[self.control_indices[2][1]] = 0. + 0.03*2*pi*f*np.cos(2*pi*f*t + pi)
+        qddj[self.control_indices[2][1]] = 0. - 0.03*2*pi*f*2*pi*f*np.sin(2*pi*f*t + pi)
         # If set to True, prepend the current state of the base, stored in self.state
         if include_base:
             qj = np.concatenate((self.state.qb, qj))
@@ -1363,8 +1593,31 @@ class Crawler:
         return qj, qdj, qddj
     
     def generate_trajectory_time_array(self,duration,steps, f, A_lat,th0_lat, th0_abd, thf_abd,include_base=True):
+        """Generate an array containing time-series of the desired pos,vel,acc
+        for all the joints(/DOFs, if the base is included) of the model
+
+        Parameters
+        ----------
+        duration : [float]
+            time span defining for how long the trajectory should be generated\n
+        steps : [int]
+            number of steps into which subdivide "duration"\n
+        f : parameter for self.compose_joints_trajectories_t()\n
+        A_lat : parameter for self.compose_joints_trajectories_t()\n
+        th0_lat : parameter for self.compose_joints_trajectories_t()\n
+        th0_abd : parameter for self.compose_joints_trajectories_t()\n
+        thf_abd : parameter for self.compose_joints_trajectories_t()\n
+        include_base : parameter for self.compose_joints_trajectories_t()
+
+        Returns
+        -------
+        [tuple]
+            (q_time_array, qd_time_array, qdd_time_array) np.arrays containing time-series for the
+            desired pos,vel,acc of models joints(/DOFs, if the base is included).
+            q_time_array[i,:] will contain the desired pos,vel,acc for the i-th step.
+        """
         if (steps != int(duration/self.dt_simulation)):
-            print("step count is wrong")
+            print("ERROR: Step count is wrong, doesn't match self.dt_simulation")
             return
         if include_base:
             q_time_array = np.zeros((steps,self.state.nq))
