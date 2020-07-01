@@ -50,7 +50,7 @@ def run_simulation(dt, t_stance, duration,
     ##########################################
     ####### MODEL SET-UP #####################
     z_rotation = 0#pi/3.5 #radians
-    model = crw.Crawler(urdf_path="/home/fra/Uni/Tesi/crawler", dt_simulation=dt, base_position=[0,0,0.05], base_orientation=[0,0,sin(z_rotation/2),cos(z_rotation/2)])
+    model = crw.Crawler(urdf_path="/home/fra/Uni/Tesi/crawler", dt_simulation=dt, base_position=[0,0,0.05], base_orientation=[0,0,sin(z_rotation/2),cos(z_rotation/2)], mass_distribution=True)
     # for i,elem in enumerate(model.links_state_array):
     #     print("Link %d  "%i, elem["world_com_trn"])
     # print(model.links_state_array)
