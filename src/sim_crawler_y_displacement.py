@@ -1,17 +1,19 @@
-import pybullet as p
-import numpy as np
-import matplotlib.pyplot as plt
-import matplotlib
-from mpl_toolkits.mplot3d import Axes3D
-import time
-import pybullet_data
-import crawler as crw
-from math import *
-import subprocess as sp
-import imageio
-from hyperopt import fmin, tpe, hp, STATUS_OK, Trials, pyll
-import pandas as pd
 import os
+import subprocess as sp
+import time
+from math import *
+
+import imageio
+import matplotlib
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import pybullet as p
+import pybullet_data
+from hyperopt import STATUS_OK, Trials, fmin, hp, pyll, tpe
+from mpl_toolkits.mplot3d import Axes3D
+
+import crawler as crw
 
 matplotlib.use('TkAgg')
 parentDirectory = os.path.abspath(os.path.join(os.getcwd(), os.pardir))
@@ -294,8 +296,7 @@ def run_simulation_null_y_COM(dt, t_stance, duration,
         )
         tau_applied = model.apply_torques(
             tau_des=tau_des,
-            filtered=True,
-            passive_body=False
+            filtered=True
         )
         # UPDATE TIME-ARRAYS
         if plot_graph_joint or plot_graph_COM:
@@ -406,7 +407,3 @@ run_simulation_null_y_COM(
     keep_in_check=False, graphic_mode=True, plot_graph_joint=True, plot_graph_COM=True,
     video_logging=False, video_path=os.path.join(parentDirectory, "./video/scaled model ydisp/hinged_tail_pi82_A35_z3.mp4")
 )
-
-
-
-

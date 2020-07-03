@@ -1,11 +1,13 @@
-import pybullet as p
-import numpy as np
-import matplotlib.pyplot as plt
-import matplotlib
 import time
-import pybullet_data
-import crawler as crw
 from math import *
+
+import matplotlib
+import matplotlib.pyplot as plt
+import numpy as np
+import pybullet as p
+import pybullet_data
+
+import crawler as crw
 
 matplotlib.use('TkAgg')
 

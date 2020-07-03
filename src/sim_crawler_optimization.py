@@ -1,17 +1,19 @@
-import pybullet as p
-import numpy as np
-import matplotlib.pyplot as plt
-import matplotlib
-from mpl_toolkits.mplot3d import Axes3D
-import time
-import pybullet_data
-import crawler as crw
-from math import *
-import subprocess as sp
-import imageio
-from hyperopt import fmin, tpe, hp, STATUS_OK, Trials, pyll
-import pandas as pd
 import os
+import subprocess as sp
+import time
+from math import *
+
+import imageio
+import matplotlib
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import pybullet as p
+import pybullet_data
+from hyperopt import STATUS_OK, Trials, fmin, hp, pyll, tpe
+from mpl_toolkits.mplot3d import Axes3D
+
+import crawler as crw
 
 matplotlib.use('TkAgg')
 parentDirectory = os.path.abspath(os.path.join(os.getcwd(), os.pardir))
@@ -419,4 +421,3 @@ if True:
 #     graphic_mode=True, plot_graph=False
 # )
 # print("loss: ", loss)
-
